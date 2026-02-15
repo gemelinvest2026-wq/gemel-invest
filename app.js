@@ -1993,13 +1993,18 @@ bindInput('customer_occupation', v => d.occupation = v);
         ${numField('פרמיה חודשית', 'old_premium', '')}
         ${selectField('סטטוס', 'old_decision', ['cancel_full|ביטול מלא','keep|להשאיר ללא שינוי','appoint|ביצוע מינוי סוכן','cancel_partial|ביטול חלקי'])}
       </div>
+      <div id="oldCompWrap" style="display:none;margin-top:10px">
+        <div class="grid3">
+          ${numField('סכום פיצוי', 'old_compensation', '')}
+        </div>
+      </div>
       <div style="height:10px"></div>
       <button class="btn btnPrimary" id="addOldBtn">+ הוסף פוליסה קיימת</button>
 
       <div class="hr"></div>
       <div class="tableWrap">
         <table>
-          <thead><tr><th>חברה</th><th>מוצר</th><th>מס׳ פוליסה</th><th>פרמיה</th><th>סטטוס</th><th></th></tr></thead>
+          <thead><tr><th>חברה</th><th>מוצר</th><th>מס׳ פוליסה</th><th>פרמיה</th><th>סכום פיצוי</th><th>סטטוס</th><th></th></tr></thead>
           <tbody>
             ${rows.length ? rows.map(({x,idx}) => {
               let dec = (x.decision || x.action || 'cancel_full');
@@ -2012,6 +2017,7 @@ bindInput('customer_occupation', v => d.occupation = v);
                 <td>${escapeHtml(x.product||'')}</td>
                 <td>${escapeHtml(x.policyNo||'')}</td>
                 <td>${money(x.premium||0)}</td>
+                <td>${(x.product==='מחלות קשות' || x.product==='מחלות סרטן') ? money(x.compensation||0) : '—'}</td>
                 <td style="min-width:200px">
                   <select data-old-decision="${idx}">
                     <option value="cancel_full" ${dec==='cancel_full'?'selected':''}>ביטול מלא</option>
@@ -2022,7 +2028,7 @@ bindInput('customer_occupation', v => d.occupation = v);
                 </td>
                 <td><button class="btn btnSoft" data-del-old="${idx}">מחיקה</button></td>
               </tr>`;
-            }).join('') : `<tr><td colspan="8" style="color:rgba(18,19,25,.55)">אין פוליסות קיימות למבוטח זה עדיין.</td></tr>`}
+            }).join('') : `<tr><td colspan="7" style="color:rgba(18,19,25,.55)">אין פוליסות קיימות למבוטח זה עדיין.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -2047,6 +2053,21 @@ bindInput('customer_occupation', v => d.occupation = v);
     setSelectValue('old_decision', 'cancel_full');
     wireCompanySelectLogo('old_company');
 
+    // Compensation (סכום פיצוי) – only for מחלות קשות / מחלות סרטן
+    const oldProdSel = $('#old_product');
+    const oldCompWrap = $('#oldCompWrap');
+    const oldCompInput = $('#old_compensation');
+    const isCompProduct = (prod) => (prod === 'מחלות קשות' || prod === 'מחלות סרטן');
+    const syncOldCompUI = () => {
+      const prod = oldProdSel ? oldProdSel.value : '';
+      const show = isCompProduct(prod);
+      if(oldCompWrap) oldCompWrap.style.display = show ? 'block' : 'none';
+      if(!show && oldCompInput) oldCompInput.value = '';
+    };
+    if(oldProdSel) oldProdSel.addEventListener('change', syncOldCompUI);
+    syncOldCompUI();
+
+
     // partial cancel note on form
     if($('#old_decision')){
       $('#old_decision').addEventListener('change', () => {
@@ -2069,12 +2090,14 @@ bindInput('customer_occupation', v => d.occupation = v);
       const company = $('#old_company').value;
       const product = $('#old_product').value;
       const premium = parseFloat($('#old_premium').value || '0') || 0;
+      const compensation = parseFloat((oldCompInput && oldCompInput.value) || '0') || 0;
       const decision = ($('#old_decision') ? $('#old_decision').value : 'cancel_full');
       const policyNo = ($('#old_policyNo') ? String($('#old_policyNo').value||'').trim() : '');
       if(!company || !product){ toast('שגיאה', 'בחר חברה וסוג ביטוח'); return; }
+      if(isCompProduct(product) && compensation <= 0){ toast('שגיאה', 'חובה למלא סכום פיצוי למחלות קשות/סרטן'); return; }
 
       const partialCancelNotes = (decision==='cancel_partial') ? String($('#addOldBtn')?.dataset?.partialCancelNotes || '').trim() : '';
-      p.oldPolicies.push({ insuredId, company, product, policyNo, premium, decision, partialCancelNotes });
+      p.oldPolicies.push({ insuredId, company, product, policyNo, premium, compensation: (isCompProduct(product)? compensation : undefined), decision, partialCancelNotes });
       if($('#addOldBtn') && $('#addOldBtn').dataset) delete $('#addOldBtn').dataset.partialCancelNotes;
       toast('נוסף', 'פוליסה קיימת נוספה');
       renderOldPoliciesStep();
@@ -2156,6 +2179,12 @@ function renderNewPoliciesStep(){
         </div>
       </div>
 
+      <div id="newCompWrap" style="display:none;margin-top:10px">
+        <div class="grid3">
+          ${numField('סכום פיצוי', 'new_compensation', '')}
+        </div>
+      </div>
+
       <div id="newLienWrap" style="display:none;margin-top:10px" class="grid2">
         <div class="field" style="grid-column:1/-1">
           <label>שיעבוד פוליסה</label>
@@ -2179,7 +2208,7 @@ function renderNewPoliciesStep(){
                 <td>${renderCompanyCell(x.company)}</td>
                 <td>${escapeHtml(x.product)}</td>
                 <td>${money(x.premium)}</td>
-                <td>${(x.product==='ריסק' || x.product==='משכנתא') ? money(x.sumInsured||0) : '—'}</td>
+                <td>${(x.product==='ריסק' || x.product==='משכנתא') ? money(x.sumInsured||0) : ((x.product==='מחלות קשות' || x.product==='מחלות סרטן') ? money(x.compensation||0) : '—')}</td>
                 <td>
                   <button class="btn btnSoft" type="button" data-disc-new="${idx}">
                     הנחות${x.discount && (x.discount.tier||'') ? ` (${escapeHtml(String(x.discount.tier||''))})` : (x.discount && (x.discount.types||[]).length ? ' (✓)' : '')}
@@ -2206,6 +2235,10 @@ function renderNewPoliciesStep(){
     const lienChk = $('#new_lien');
     const sumWrap = $('#newSumWrap');
     const sumInput = $('#new_sumInsured');
+    const compWrap = $('#newCompWrap');
+    const compInput = $('#new_compensation');
+
+    const isCompProduct = (prod) => (prod === 'מחלות קשות' || prod === 'מחלות סרטן');
 
 
     const isLienProduct = (prod) => (prod === 'ריסק' || prod === 'משכנתא');
@@ -2217,11 +2250,19 @@ function renderNewPoliciesStep(){
       if(!show && sumInput) sumInput.value = '';
     };
 
+    const syncCompUI = () => {
+      const prod = productSel ? productSel.value : '';
+      const show = isCompProduct(prod);
+      if(compWrap) compWrap.style.display = show ? 'block' : 'none';
+      if(!show && compInput) compInput.value = '';
+    };
+
     const syncLienUI = () => {
       const prod = productSel ? productSel.value : '';
       const show = isLienProduct(prod);
       if(lienWrap) lienWrap.style.display = show ? 'grid' : 'none';
       syncSumUI();
+      syncCompUI();
       if(!show){
         if(lienChk) lienChk.checked = false;
         newLienDraft = null;
@@ -2252,10 +2293,13 @@ function renderNewPoliciesStep(){
       const company = $('#new_company').value;
       const product = $('#new_product').value;
       const premium = parseFloat($('#new_premium').value || '0') || 0;
+      const compensation = parseFloat((compInput && compInput.value) || '0') || 0;
       const sumInsured = parseFloat((sumInput && sumInput.value) || '0') || 0;
       if(!company || !product){ toast('שגיאה', 'בחר חברה ומוצר'); return; }
       if(isLienProduct(product) && sumInsured <= 0){ toast('שגיאה', 'חובה למלא סכום ביטוח לריסק/משכנתא'); return; }
+      if(isCompProduct(product) && compensation <= 0){ toast('שגיאה', 'חובה למלא סכום פיצוי למחלות קשות/סרטן'); return; }
       const rec = { insuredId, company, product, premium };
+      if(isCompProduct(product)) rec.compensation = compensation;
       if(isLienProduct(product)) rec.sumInsured = sumInsured;
       if(isLienProduct(product) && (lienChk && lienChk.checked) && newLienDraft){ rec.lien = newLienDraft; }
       p.newPolicies.push(rec);
