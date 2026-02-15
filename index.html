@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>גמל אינווסט • CRM </title>
+<meta content="#FBFAF7" name="theme-color"/>
+<link href="app.css?v=20260213200648" rel="stylesheet"/>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div class="brand">
+<div class="logoBox">
+<img class="login-logo" src="assets/logo-login-clean.svg"/>
+</div>
+<div aria-hidden="true" class="brandDivider"></div>
+</div>
+<nav class="nav">
+<button class="navItem active" data-route="customers">
+<span aria-hidden="true" class="ico">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24" width="20">
+<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+<circle cx="9" cy="7" r="3"></circle>
+<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+<path d="M16 3.13a3 3 0 0 1 0 5.74"></path>
+</svg>
+</span>
+<span>לקוחות</span>
+</button>
+<button class="navItem" data-route="my">
+<span aria-hidden="true" class="ico">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24" width="20">
+<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-1.42 3.41h-.18a1.65 1.65 0 0 0-1.65 1.65v.18a2 2 0 0 1-3.41 1.42l-.06-.06A1.65 1.65 0 0 0 11 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 0 1 5.71 18.4v-.18A1.65 1.65 0 0 0 4.06 16.6H3.88a2 2 0 0 1-1.42-3.41l.06-.06A1.65 1.65 0 0 0 2.4 11a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 0 1 3.41 5.71h.18A1.65 1.65 0 0 0 5.24 4.06v-.18A2 2 0 0 1 8.65 2.46l.06.06A1.65 1.65 0 0 0 11 2.6a1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0 0 1 16.29 3.6v.18A1.65 1.65 0 0 0 17.94 5.24h.18a2 2 0 0 1 1.42 3.41l-.06.06A1.65 1.65 0 0 0 19.6 11a1.65 1.65 0 0 0-.2 4z"></path>
+<circle cx="12" cy="12" r="3"></circle>
+</svg>
+</span>
+<span>התהליכים שלי</span>
+</button>
+<button class="navItem" data-route="proposals">
+<span aria-hidden="true" class="ico">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24" width="20">
+<path d="M6 2h9l3 3v17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"></path>
+<path d="M14 2v4h4"></path>
+<path d="M8 13h8"></path>
+<path d="M8 17h8"></path>
+<path d="M8 9h4"></path>
+</svg>
+</span>
+<span>הצעות</span>
+</button>
+<button class="navItem" data-route="settings">
+<span aria-hidden="true" class="ico">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24" width="20">
+<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"></path>
+<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-1.42 3.41h-.18a1.65 1.65 0 0 0-1.65 1.65v.18a2 2 0 0 1-3.41 1.42l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V23a2 2 0 0 1-4 0v-.18a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 0 1 .6 20.29v-.18A1.65 1.65 0 0 0 0 18.46v-.18a2 2 0 0 1 1.42-1.92l.18-.05A1.65 1.65 0 0 0 2.6 15a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 0 1 3.6 8.71h.18A1.65 1.65 0 0 0 5.43 7.06V6.88A2 2 0 0 1 6.88 5.0l.12-.04A1.65 1.65 0 0 0 8.6 3.5V3.32A2 2 0 0 1 12 2.0a2 2 0 0 1 3.4 1.32v.18a1.65 1.65 0 0 0 1.6 1.46h.18a2 2 0 0 1 2 2v.18a1.65 1.65 0 0 0 1.46 1.6h.18a2 2 0 0 1 1.32 3.4l-.06.06A1.65 1.65 0 0 0 19.4 15z"></path>
+</svg>
+</span>
+<span>הגדרות</span>
+</button>
+</nav>
+<div class="sidebarFooter">
+<div class="agentBadge" id="agentBadge">
+<span aria-hidden="true" class="dotOnline"></span>
+<span class="agentName" id="agentName">נציג: אורח</span>
+</div>
+</div>
+</aside>
+<main class="main">
+<header class="topbar">
+<div class="topbarLeft">
+<h1 class="pageTitle" id="pageTitle">לקוחות</h1>
+<div class="crumb" id="crumb">Overview</div>
+</div>
+<div class="topbarRight">
+<div class="searchWrap">
+<span aria-hidden="true" class="searchIco">⌕</span>
+<input autocomplete="off" class="searchInput" id="globalSearch" placeholder="חיפוש לקוח לפי שם / ת״ז / טלפון"/>
+<button class="btn btnSoft" id="searchBtn">חיפוש</button>
+</div>
+<button class="btn btnPrimary" id="newProposalBtn">+ הצעה חדשה</button>
+</div>
+</header>
+<section class="content">
+<div class="kpis" id="kpis"></div>
+<div class="panel">
+<div class="panelHead">
+<div class="tabs" id="tabs"></div>
+</div>
+<div class="panelBody" id="view"></div>
+</div>
+</section>
+</main>
+</div>
+<!-- Fullscreen Wizard -->
+<div aria-hidden="true" class="modalOverlay hidden" id="wizardOverlay">
+<div aria-label="אשף הצעה" aria-modal="true" class="modalFullscreen" role="dialog">
+<div class="modalTop">
+<div class="modalTitleWrap">
+<div class="modalTitle" id="wizardTitle">הצעה חדשה</div>
+<div class="modalSub" id="wizardSub">יצירת הצעה ללקוח + שאלון רפואי לפי חברה ומוצר</div>
+</div>
+<div class="modalActions">
+<div class="modalLogo"><img alt="GEMEL INVEST" src="assets/logo-login-clean.svg"/></div>
+<button class="btn btnSoft" id="wizardCloseBtn">סגור</button>
+</div>
+</div>
+<div class="wizardBar">
+<div class="stepper" id="stepper"></div>
+<div class="insuredTabs" id="insuredTabs"></div>
+<div class="insuredIndicator" id="insuredIndicator"></div>
+</div>
+<div class="modalBody">
+<div class="wizardGrid">
+<div class="wizardMain" id="wizardMain"></div>
+<aside class="wizardSide">
+<div class="sideCard">
+<div class="sideTitle">מצב</div>
+<div class="sideRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill" id="savePill">טיוטה</span></div>
+<div style="height:10px"></div>
+<div id="compHost"></div>
+<div class="sideHint">💾 נשמר מקומית בדמו. חיבור ל־Sheets נוסיף בשלב הבא.</div>
+</div>
+<div class="sideCard">
+<div class="sideTitle">סיכום מהיר</div>
+<div class="miniStat"><span>פרמיה קיימת</span><b id="sumOld">—</b></div>
+<div class="miniStat"><span>פרמיה חדשה</span><b id="sumNew">—</b></div>
+<div class="miniStat"><span>סה״כ אחרי</span><b id="sumTotal">—</b></div>
+</div>
+<div class="sideCard">
+<div class="sideTitle">פעולות</div>
+<button class="btn btnPrimary w100" id="nextStepBtn">המשך</button>
+<button class="btn btnSoft w100" id="prevStepBtn">חזרה</button>
+</div>
+</aside>
+</div>
+</div>
+</div>
+</div>
+<div aria-live="polite" class="toastHost" id="toastHost"></div>
+<script src="app.js?v=20260213200648"></script>
+<!-- Forgot Password Modal -->
+<div class="modal-overlay" id="forgotModal" style="display:none;">
+<div class="modal-card">
+<h3 class="forgot-title">שכחת סיסמה?</h3>
+<p>אנא פנה למנהל המערכת בטלפון:</p>
+<div class="modal-phone">0505588809</div>
+<button class="modal-close" onclick="closeForgotModal()">סגור</button>
+</div>
+</div>
+</body>
+</html>
