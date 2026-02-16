@@ -1754,7 +1754,7 @@ html, body {
 
 /* ===== Compact UI (Auto for PWA / Standalone) ===== */
 :root{
-  --ui-scale: 0.92; /* tweak between 0.88–0.95 if needed */
+  --ui-scale: 0.89; /* tweak between 0.88–0.95 if needed */
 }
 body.compact-ui{
   transform: scale(var(--ui-scale));
