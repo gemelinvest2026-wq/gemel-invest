@@ -1943,7 +1943,7 @@ body.compact-ui, #appRoot{
 .rowHighlight{ outline:2px solid rgba(37,99,235,.55); outline-offset:-2px; box-shadow:0 0 0 4px rgba(37,99,235,.12); }
 /* Fix login logo size */
 .loginBrandLogo{
-  max-width: 420px;   /* שליטה ברוחב */
+  max-width: 380px;   /* שליטה ברוחב */
   width: 100%;
   height: auto;
   display: block;
