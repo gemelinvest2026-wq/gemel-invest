@@ -581,10 +581,10 @@
   const USERS_LS_KEY = 'gemel_users_v1';
 
   const SEED_USERS = [
-    { username:'admin',  password:'1234', role:'admin', displayName:'מנהל מערכת', active:true, createdAt:new Date().toISOString() },
-    { username:'agent1', password:'1234', role:'agent', displayName:'אוריה (דמו)', active:true, createdAt:new Date().toISOString() },
-    { username:'agent2', password:'1234', role:'agent', displayName:'סתיו', active:true, createdAt:new Date().toISOString() },
-    { username:'agent3', password:'1234', role:'agent', displayName:'דוד', active:true, createdAt:new Date().toISOString() },
+    { username:'admin',  password:'2002', role:'admin', displayName:'מנהל מערכת', active:true, createdAt:new Date().toISOString() },
+    { username:'agent1', password:'2002', role:'agent', displayName:'אוריה (דמו)', active:true, createdAt:new Date().toISOString() },
+    { username:'agent2', password:'2002', role:'agent', displayName:'סתיו', active:true, createdAt:new Date().toISOString() },
+    { username:'agent3', password:'2002', role:'agent', displayName:'דוד', active:true, createdAt:new Date().toISOString() },
   ];
 
   function loadUsers_(){
