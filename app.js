@@ -6,7 +6,7 @@
 (() => {
   "use strict";
 
-  const BUILD = "20260310-0045";
+  const BUILD = "20260313-0945";
   const ADMIN_CONTACT_EMAIL = "oriasomech@gmail.com";
   const ARCHIVE_CUSTOMER_PIN = "1990";
 
@@ -399,6 +399,7 @@
       if (adminAuth.active !== false && username === safeTrim(adminAuth.username) && pin === safeTrim(adminAuth.pin)) {
         this.current = { name: safeTrim(adminAuth.username) || defAdmin.username, role:"admin" };
         if(remember) this._saveSession(this.current); else localStorage.removeItem(LS_SESSION_KEY);
+        await App.reloadSessionState();
         this.unlock();
         UI.applyRoleUI();
         UI.renderAuthPill();
@@ -415,6 +416,7 @@
 
       this.current = { name: matched.name, role: (matched.role === "manager" ? "manager" : matched.role === "ops" ? "ops" : "agent") };
       if(remember) this._saveSession(this.current); else localStorage.removeItem(LS_SESSION_KEY);
+      await App.reloadSessionState();
       this.unlock();
       UI.applyRoleUI();
       UI.renderAuthPill();
@@ -4707,9 +4709,13 @@ if(path === "birthDate"){
       else State.data.proposals.unshift(record);
       this.editingDraftId = record.id;
       State.data.meta.updatedAt = nowISO();
-      await App.persist("ההצעה נשמרה");
+      const persistRes = await App.persist("ההצעה נשמרה");
       ProposalsUI.render();
-      this.setHint("ההצעה נשמרה ותופיע במסך הצעות להמשך עריכה");
+      if(persistRes?.ok){
+        this.setHint("ההצעה נשמרה ותופיע במסך הצעות להמשך עריכה");
+      }else{
+        this.setHint("ההצעה נשמרה מקומית בלבד. בדוק חיבור ל-Google Sheets כדי שתופיע גם ממחשב אחר.");
+      }
     },
 
     getOperationalPayload(){
@@ -5227,8 +5233,32 @@ const App = {
       // save to sheets
       UI.renderSyncStatus("שומר…", "warn");
       const r = await Storage.saveSheets(State.data);
-      if (r.ok) UI.renderSyncStatus(label || "נשמר", "ok", r.at);
-      else UI.renderSyncStatus("שגיאה בשמירה", "err", null, r.error);
+      if (r.ok) {
+        UI.renderSyncStatus(label || "נשמר", "ok", r.at);
+      } else {
+        UI.renderSyncStatus("שגיאה בשמירה", "err", null, r.error);
+        console.error("SAVE_TO_SHEETS_FAILED:", r?.error || r);
+      }
+      return r;
+    },
+
+    async reloadSessionState(){
+      if(!Auth.current) return { ok:false, error:"NO_SESSION" };
+      UI.renderSyncStatus("טוען נתוני משתמש…", "warn");
+      const r = await Storage.loadSheets();
+      if (r.ok) {
+        State.data = r.payload;
+        Storage.saveBackup(State.data);
+        UI.renderSyncStatus("נתוני משתמש נטענו", "ok", r.at);
+        if (Auth.isAdmin()) UsersUI.render();
+        if (Auth.current) {
+          CustomersUI.render();
+          ProposalsUI.render();
+        }
+      } else {
+        UI.renderSyncStatus("שגיאה בטעינת נתוני משתמש", "err", null, r.error);
+        console.error("LOAD_SESSION_STATE_FAILED:", r?.error || r);
+      }
       return r;
     },
 
