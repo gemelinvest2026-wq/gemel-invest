@@ -6,7 +6,7 @@
 (() => {
   "use strict";
 
-  const BUILD = "20260316-1945";
+  const BUILD = "20260316-2215";
   const ADMIN_CONTACT_EMAIL = "oriasomech@gmail.com";
   const ARCHIVE_CUSTOMER_PIN = "1990";
 
@@ -700,11 +700,13 @@ this.applyRoleUI();
 
     goView(view){
       let safe = String(view || "dashboard");
+      this.currentView = safe;
       if(safe === "settings" && !Auth.isAdmin()) safe = "dashboard";
       if(safe === "users" && !Auth.canManageUsers()) safe = "dashboard";
       if(safe === "mirrors" && !Auth.isOps()) safe = "dashboard";
       if(safe === "customers" && !Auth.current) safe = "dashboard";
       if(safe === "proposals" && !Auth.current) safe = "dashboard";
+      this.currentView = safe;
       // hide all views
       $$(".view").forEach(v => v.classList.remove("is-visible"));
       const el = $("#view-" + safe);
@@ -986,69 +988,6 @@ txt.textContent = "";
   }
 
   // ---------- Customers UI ----------
-
-  function getOpsWorkflowState(rec){
-    if(!rec || typeof rec !== "object") return {};
-    if(!rec.payload || typeof rec.payload !== "object") rec.payload = {};
-    if(!rec.payload.opsWorkflow || typeof rec.payload.opsWorkflow !== "object") rec.payload.opsWorkflow = {};
-    const store = rec.payload.opsWorkflow;
-    if(typeof store.locked !== 'boolean') store.locked = false;
-    store.currentStatus = safeTrim(store.currentStatus);
-    return store;
-  }
-
-  function getCustomerOpsUiState(rec){
-    const store = getOpsWorkflowState(rec);
-    const currentStatus = safeTrim(store.currentStatus);
-    const locked = !!store.locked || currentStatus === 'ops_in_progress';
-    if(locked){
-      return {
-        key:'ops_in_progress',
-        label:'בטיפול מחלקת תפעול',
-        detail:'התיק נעול עד סיום שיחת השיקוף',
-        rowClass:' is-opsLocked',
-        badgeClass:' badge--opsLocked',
-        allowOpen:false,
-        locked:true,
-        highlight:true
-      };
-    }
-    if(currentStatus === 'awaiting_signatures'){
-      return {
-        key:'awaiting_signatures',
-        label:'בוצע שיקוף · ממתין לחתימות מבוטח וסוכן',
-        detail:'בוצע שיקוף ללקוח וממתין לחתימות',
-        rowClass:' is-awaitingSignatures',
-        badgeClass:' badge--awaitingSignatures',
-        allowOpen:true,
-        locked:false,
-        highlight:false
-      };
-    }
-    if(currentStatus === 'client_signed'){
-      return {
-        key:'client_signed',
-        label:'הלקוח חתם',
-        detail:'הלקוח חתם לאחר שיקוף',
-        rowClass:' is-clientSigned',
-        badgeClass:' badge--clientSigned',
-        allowOpen:true,
-        locked:false,
-        highlight:false
-      };
-    }
-    return {
-      key:'default',
-      label:safeTrim(rec?.status) || 'חדש',
-      detail:'',
-      rowClass:'',
-      badgeClass:'',
-      allowOpen:true,
-      locked:false,
-      highlight:false
-    };
-  }
-
   const CustomersUI = {
     currentId: null,
     els: {},
@@ -1082,20 +1021,20 @@ txt.textContent = "";
           if(customerId) this.openByIdWithLoader(customerId);
           return;
         }
-        const signedBtn = ev.target?.closest?.('[data-mark-client-signed]');
-        if(signedBtn){
-          ev.preventDefault();
-          ev.stopPropagation();
-          const customerId = signedBtn.getAttribute('data-mark-client-signed');
-          if(customerId) this.markClientSigned(customerId);
-          return;
-        }
         const archiveBtn = ev.target?.closest?.("[data-archive-customer]");
         if(archiveBtn){
           ev.preventDefault();
           ev.stopPropagation();
           const customerId = archiveBtn.getAttribute("data-archive-customer");
           if(customerId) ArchiveCustomerUI.open(customerId);
+          return;
+        }
+        const signedBtn = ev.target?.closest?.("[data-set-client-signed]");
+        if(signedBtn){
+          ev.preventDefault();
+          ev.stopPropagation();
+          const customerId = signedBtn.getAttribute("data-set-client-signed");
+          if(customerId) this.markClientSigned(customerId);
         }
       });
 
@@ -1142,6 +1081,50 @@ txt.textContent = "";
       return rows.filter(rec => [rec.fullName, rec.idNumber, rec.phone, rec.agentName, rec.email, rec.city].some(v => safeTrim(v).toLowerCase().includes(q)));
     },
 
+    getOpsMirrorState(rec){
+      if(!rec || !rec.payload || typeof rec.payload !== 'object') return {};
+      if(!rec.payload.opsMirror || typeof rec.payload.opsMirror !== 'object') rec.payload.opsMirror = {};
+      const s = rec.payload.opsMirror;
+      if(typeof s.locked !== 'boolean') s.locked = false;
+      if(typeof s.clientSigned !== 'boolean') s.clientSigned = false;
+      return s;
+    },
+
+    isOpsLocked(rec){
+      const s = this.getOpsMirrorState(rec);
+      return !!s.locked;
+    },
+
+    canMarkClientSigned(rec){
+      const s = this.getOpsMirrorState(rec);
+      return Auth.isOps() && !s.locked && safeTrim(s.phase) === 'waiting_signatures' && !s.clientSigned;
+    },
+
+    getCustomerStatusText(rec){
+      const s = this.getOpsMirrorState(rec);
+      if(s.locked) return 'בטיפול מחלקת תפעול';
+      if(s.clientSigned) return 'הלקוח חתם';
+      if(safeTrim(s.phase) === 'waiting_signatures') return 'בוצע שיקוף · ממתין לחתימות מבוטח וסוכן';
+      return safeTrim(rec?.status) || 'חדש';
+    },
+
+    async markClientSigned(customerId){
+      const rec = this.byId(customerId);
+      if(!rec) return;
+      const s = this.getOpsMirrorState(rec);
+      s.locked = false;
+      s.clientSigned = true;
+      s.phase = 'client_signed';
+      s.signedAt = nowISO();
+      s.signedBy = safeTrim(Auth?.current?.name);
+      rec.status = 'הלקוח חתם';
+      State.data.meta.updatedAt = nowISO();
+      rec.updatedAt = State.data.meta.updatedAt;
+      await App.persist('עודכן סטטוס חתימת לקוח');
+      this.render();
+      if(this.currentId && String(this.currentId) === String(rec.id)) this.openById(rec.id);
+    },
+
     render(){
       if(!UI.els.customersTbody) return;
       const rows = this.filtered();
@@ -1150,40 +1133,30 @@ txt.textContent = "";
       }
       UI.els.customersTbody.innerHTML = rows.length ? rows.map(rec => {
         const updated = this.formatDate(rec.updatedAt || rec.createdAt);
-        const opsUi = getCustomerOpsUiState(rec);
-        const canMarkSigned = Auth.isOps() && opsUi.key === 'awaiting_signatures';
-        return `<tr class="lcCustomersRow${opsUi.rowClass}">
+        const lockState = this.getOpsMirrorState(rec);
+        const locked = !!lockState.locked;
+        const statusText = this.getCustomerStatusText(rec);
+        const statusClass = locked ? 'lcOpsStatusBadge is-locked' : (lockState.clientSigned ? 'lcOpsStatusBadge is-signed' : (safeTrim(lockState.phase) === 'waiting_signatures' ? 'lcOpsStatusBadge is-waiting' : ''));
+        const openDisabled = locked ? 'disabled aria-disabled="true"' : '';
+        const openText = locked ? 'בטיפול מחלקת תפעול' : 'פתח תיק';
+        const signedBtn = this.canMarkClientSigned(rec)
+          ? `<button class="btn lcCustomers__signBtn" data-set-client-signed="${escapeHtml(rec.id)}" type="button">הלקוח חתם</button>`
+          : '';
+        return `<tr class="${locked ? 'lcCustomersRow is-ops-locked' : 'lcCustomersRow'}">
           <td><div class="lcCustomers__nameCell"><strong>${escapeHtml(rec.fullName || "—")}</strong><span class="muted small">${escapeHtml(rec.city || "")}</span></div></td>
           <td>${escapeHtml(rec.idNumber || "—")}</td>
           <td dir="ltr">${escapeHtml(rec.phone || "—")}</td>
           <td>${escapeHtml(rec.agentName || "—")}</td>
-          <td><span class="badge${opsUi.badgeClass}">${escapeHtml(opsUi.label)}</span></td>
+          <td><span class="badge ${statusClass}">${escapeHtml(statusText)}</span></td>
           <td>${escapeHtml(updated)}</td>
           <td><div class="lcCustomers__rowActions">
-            <button class="btn btn--primary" data-open-customer="${escapeHtml(rec.id)}" type="button" ${opsUi.allowOpen ? '' : 'disabled'}>${opsUi.allowOpen ? 'פתח תיק' : 'תיק נעול'}</button>
-            ${opsUi.locked ? `<span class="lcCustomers__opsNote">בטיפול מחלקת תפעול</span>` : ''}
-            ${canMarkSigned ? `<button class="btn" data-mark-client-signed="${escapeHtml(rec.id)}" type="button">הלקוח חתם</button>` : ''}
+            <button class="btn btn--primary" data-open-customer="${escapeHtml(rec.id)}" type="button" ${openDisabled}>${openText}</button>
+            ${signedBtn}
             <button class="btn btn--danger lcCustomers__archiveBtn" data-archive-customer="${escapeHtml(rec.id)}" type="button">גנוז לקוח</button>
           </div></td>
         </tr>`;
       }).join("") : `<tr><td colspan="7"><div class="emptyState"><div class="emptyState__icon">🗂️</div><div class="emptyState__title">עדיין אין לקוחות</div><div class="emptyState__text">ברגע שמסיימים הקמת לקוח, הלקוח יישמר כאן אוטומטית ויהיה אפשר לפתוח את תיק הלקוח המלא.</div></div></td></tr>`;
 
-    },
-
-    async markClientSigned(id){
-      if(!Auth.isOps()) return;
-      const rec = this.byId(id);
-      if(!rec) return;
-      const store = getOpsWorkflowState(rec);
-      store.locked = false;
-      store.currentStatus = 'client_signed';
-      store.clientSignedAt = nowISO();
-      store.clientSignedBy = safeTrim(Auth?.current?.name);
-      rec.updatedAt = store.clientSignedAt;
-      State.data.meta.updatedAt = store.clientSignedAt;
-      this.render();
-      if(this.currentId && String(this.currentId) === String(id)) this.openById(id, { skipLoader:true });
-      await App.persist('סטטוס לקוח עודכן: הלקוח חתם');
     },
 
     showLoader(){
@@ -1205,9 +1178,8 @@ txt.textContent = "";
         console.warn("CUSTOMER_OPEN_NOT_FOUND", id);
         return;
       }
-      const opsUi = getCustomerOpsUiState(rec);
-      if(!opsUi.allowOpen){
-        alert('התיק בטיפול מחלקת תפעול ולא ניתן לפתוח אותו עד סיום שיחת השיקוף.');
+      if(this.isOpsLocked(rec)){
+        alert('התיק חסום כרגע כי הוא בטיפול מחלקת תפעול.');
         return;
       }
       try {
@@ -1486,16 +1458,7 @@ txt.textContent = "";
 
     renderPolicyWallet(rec, policies){
       const cards = policies.map(p => this.renderPolicyCard(p)).join("");
-      const opsUi = getCustomerOpsUiState(rec);
-      const store = getOpsWorkflowState(rec);
-      const workflowBanner = opsUi.key !== 'default' ? `<div class="customerWorkflowBanner customerWorkflowBanner--${escapeHtml(opsUi.key)}">
-          <div class="customerWorkflowBanner__title">${escapeHtml(opsUi.label)}</div>
-          <div class="customerWorkflowBanner__sub">${escapeHtml(opsUi.key === 'awaiting_signatures' ? 'בוצע שיקוף ללקוח. ממתין לחתימות מבוטח וסוכן.' : opsUi.key === 'client_signed' ? 'הלקוח חתם. סטטוס השיקוף עודכן במערכת.' : 'התיק בטיפול מחלקת תפעול עד לסיום שיחת השיקוף.')}</div>
-          ${(Auth.isOps() && opsUi.key === 'awaiting_signatures') ? `<div class="customerWorkflowBanner__actions"><button class="btn" data-mark-client-signed="${escapeHtml(rec.id)}" type="button">סמן שהלקוח חתם</button></div>` : ''}
-          ${(store.lastCompletedAt && opsUi.key !== 'ops_in_progress') ? `<div class="customerWorkflowBanner__meta">עודכן לאחרונה: ${escapeHtml(this.formatDate(store.lastCompletedAt))}</div>` : ''}
-        </div>` : '';
       return `<section class="customerWalletSection">
-        ${workflowBanner}
         <div class="customerWalletSection__head">
           <div class="customerWalletSection__titleWrap">
             <div class="customerWalletSection__icon">💼</div>
@@ -1517,22 +1480,11 @@ txt.textContent = "";
           if(policy) this.openPolicyModal(rec, policy);
         });
       });
-      this.els.body.querySelectorAll('[data-mark-client-signed]').forEach(btn => {
-        on(btn, 'click', () => {
-          const id = btn.getAttribute('data-mark-client-signed');
-          if(id) this.markClientSigned(id);
-        });
-      });
     },
 
     openById(id, opts={}){
       const rec = this.byId(id);
       if(!rec || !this.els.wrap) return;
-      const opsUi = getCustomerOpsUiState(rec);
-      if(!opsUi.allowOpen){
-        alert('התיק בטיפול מחלקת תפעול ולא ניתן לפתוח אותו עד סיום שיחת השיקוף.');
-        return;
-      }
       try {
         Wizard?.hideFinishFlow?.();
         Wizard?.closeHealthFindingsModal?.();
@@ -1546,10 +1498,12 @@ txt.textContent = "";
         if(this.els.name) this.els.name.textContent = rec.fullName || "תיק לקוח";
         if(this.els.avatar) this.els.avatar.textContent = this.getAvatarText(rec);
         if(this.els.meta){
+          const statusText = this.getCustomerStatusText(rec);
           const metaParts = [
             rec.idNumber ? `<span class="customerHero__metaItem">ת.ז ${escapeHtml(rec.idNumber)}</span>` : "",
             rec.agentName ? `<span class="customerHero__metaSep">|</span><span class="customerHero__metaItem">נציג: ${escapeHtml(rec.agentName)}</span>` : "",
-            rec.phone ? `<span class="customerHero__metaSep">|</span><span class="customerHero__metaItem" dir="ltr">${escapeHtml(rec.phone)}</span>` : ""
+            rec.phone ? `<span class="customerHero__metaSep">|</span><span class="customerHero__metaItem" dir="ltr">${escapeHtml(rec.phone)}</span>` : "",
+            `<span class="customerHero__metaSep">|</span><span class="customerHero__metaItem"><span class="customerFileStatusBadge">${escapeHtml(statusText)}</span></span>`
           ].filter(Boolean).join("");
           this.els.meta.innerHTML = metaParts;
         }
@@ -1565,8 +1519,24 @@ txt.textContent = "";
             </div>`).join("");
         }
         if(this.els.body){
-          this.els.body.innerHTML = this.renderPolicyWallet(rec, policies);
+          const opsState = this.getOpsMirrorState(rec);
+          const statusText = this.getCustomerStatusText(rec);
+          const signedBtn = this.canMarkClientSigned(rec)
+            ? `<button class="btn btn--primary" data-set-client-signed="${escapeHtml(rec.id)}" type="button">סמן שהלקוח חתם</button>`
+            : '';
+          const summaryBits = [];
+          if(safeTrim(opsState.lastSessionDate)) summaryBits.push(`תאריך שיקוף: ${escapeHtml(opsState.lastSessionDate)}`);
+          if(safeTrim(opsState.lastSessionStartTime)) summaryBits.push(`שעת התחלה: ${escapeHtml(opsState.lastSessionStartTime)}`);
+          if(safeTrim(opsState.lastSessionDurationText)) summaryBits.push(`משך שיחה: ${escapeHtml(opsState.lastSessionDurationText)}`);
+          const opsBlock = `<section class="customerOpsStatusCard${opsState.locked ? ' is-locked' : ''}">
+            <div class="customerOpsStatusCard__title">סטטוס תפעולי</div>
+            <div class="customerOpsStatusCard__status">${escapeHtml(statusText)}</div>
+            ${summaryBits.length ? `<div class="customerOpsStatusCard__meta">${summaryBits.join(' · ')}</div>` : ''}
+            ${signedBtn ? `<div class="customerOpsStatusCard__actions">${signedBtn}</div>` : ''}
+          </section>`;
+          this.els.body.innerHTML = opsBlock + this.renderPolicyWallet(rec, policies);
           this.bindPolicyCardActions(rec, policies);
+          this.els.body.querySelectorAll('[data-set-client-signed]').forEach(btn => on(btn, 'click', () => this.markClientSigned(rec.id)));
         }
         this.els.wrap.classList.add("is-open");
         this.els.wrap.setAttribute("aria-hidden","false");
@@ -2024,150 +1994,193 @@ init(){
       this.reset();
     },
 
-    _timerHandle: null,
 
-    getCallState(rec){
-      if(!rec.payload || typeof rec.payload !== 'object') rec.payload = {};
-      if(!rec.payload.mirrorFlow || typeof rec.payload.mirrorFlow !== 'object') rec.payload.mirrorFlow = {};
-      if(!rec.payload.mirrorFlow.callSession || typeof rec.payload.mirrorFlow.callSession !== 'object') rec.payload.mirrorFlow.callSession = {};
-      const store = rec.payload.mirrorFlow.callSession;
-      if(typeof store.active !== 'boolean') store.active = false;
-      return store;
-    },
 
-    formatDuration(totalSec){
-      const s = Math.max(0, Number(totalSec) || 0);
-      const hh = String(Math.floor(s / 3600)).padStart(2,'0');
-      const mm = String(Math.floor((s % 3600) / 60)).padStart(2,'0');
-      const ss = String(s % 60).padStart(2,'0');
-      return hh !== '00' ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
-    },
-
-    formatFullDate(v){
-      if(!v) return '—';
-      const d = new Date(v);
-      if(Number.isNaN(+d)) return String(v);
-      try{ return d.toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit', year:'numeric' }); }catch(_e){ return String(v); }
-    },
-
-    formatClock(v){
-      if(!v) return '—';
-      const d = new Date(v);
-      if(Number.isNaN(+d)) return '—';
-      try{ return d.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }catch(_e){ return '—'; }
-    },
-
-    openStartModal(){
-      const rec = this.current();
-      if(!rec || !this.els.startModal) return;
-      if(this.els.startText){
-        this.els.startText.textContent = `נבחר הלקוח ${rec.fullName || 'לקוח'}. לחץ על התחלה כדי לפתוח את מסך השיקוף ולהפעיל שעון שיחה.`;
+    ensureSessionChrome(){
+      if(!this.els.sessionBar){
+        const bar = document.createElement('div');
+        bar.id = 'mirrorsSessionBar';
+        bar.className = 'mirrorsSessionBar';
+        bar.hidden = true;
+        bar.innerHTML = `<div class="mirrorsSessionBar__inner">
+          <div class="mirrorsSessionBar__meta">
+            <span class="mirrorsSessionBar__kicker">שיחת שיקוף פעילה</span>
+            <strong id="mirrorsSessionCustomer">לקוח</strong>
+            <span id="mirrorsSessionStart">--:--</span>
+          </div>
+          <div class="mirrorsSessionBar__timer" id="mirrorsSessionTimer">00:00</div>
+          <button class="btn btn--danger" id="mirrorsFinishSessionBtn" type="button">סיים שיחת שיקוף</button>
+        </div>`;
+        const flow = this.els.flow || document.body;
+        flow.parentNode.insertBefore(bar, flow);
+        this.els.sessionBar = bar;
+        this.els.sessionTimer = bar.querySelector('#mirrorsSessionTimer');
+        this.els.sessionCustomer = bar.querySelector('#mirrorsSessionCustomer');
+        this.els.sessionStart = bar.querySelector('#mirrorsSessionStart');
+        this.els.finishSessionBtn = bar.querySelector('#mirrorsFinishSessionBtn');
+        on(this.els.finishSessionBtn, 'click', () => this.finishSession());
       }
-      this.els.startModal.hidden = false;
+      if(!this.els.startModal){
+        const modal = document.createElement('div');
+        modal.id = 'mirrorsStartModal';
+        modal.className = 'mirrorsStartModal';
+        modal.hidden = true;
+        modal.innerHTML = `<div class="mirrorsStartModal__backdrop"></div>
+          <div class="mirrorsStartModal__panel" role="dialog" aria-modal="true">
+            <div class="mirrorsStartModal__title">התחל שיחת שיקוף ללקוח</div>
+            <div class="mirrorsStartModal__text" id="mirrorsStartModalText">לקוח</div>
+            <div class="mirrorsStartModal__actions">
+              <button class="btn" id="mirrorsStartModalCancel" type="button">ביטול</button>
+              <button class="btn btn--primary" id="mirrorsStartModalStart" type="button">התחל שיחה</button>
+            </div>
+          </div>`;
+        document.body.appendChild(modal);
+        this.els.startModal = modal;
+        this.els.startModalText = modal.querySelector('#mirrorsStartModalText');
+        this.els.startModalCancel = modal.querySelector('#mirrorsStartModalCancel');
+        this.els.startModalStart = modal.querySelector('#mirrorsStartModalStart');
+        on(this.els.startModalCancel, 'click', () => this.cancelStartSession());
+        on(this.els.startModalStart, 'click', () => this.startSession());
+        on(modal, 'click', (ev) => { if(ev.target === modal || ev.target.classList.contains('mirrorsStartModal__backdrop')) this.cancelStartSession(); });
+      }
     },
 
-    closeStartModal(){
-      if(this.els.startModal) this.els.startModal.hidden = true;
+    getOpsMirrorState(rec){
+      if(!rec.payload || typeof rec.payload !== 'object') rec.payload = {};
+      if(!rec.payload.opsMirror || typeof rec.payload.opsMirror !== 'object') rec.payload.opsMirror = {};
+      const s = rec.payload.opsMirror;
+      if(typeof s.locked !== 'boolean') s.locked = false;
+      if(typeof s.clientSigned !== 'boolean') s.clientSigned = false;
+      return s;
     },
 
-    async startCall(){
+    isSessionActive(){
       const rec = this.current();
-      if(!rec) return;
-      const store = this.getCallState(rec);
-      const opsStore = getOpsWorkflowState(rec);
+      if(!rec) return false;
+      const s = this.getOpsMirrorState(rec);
+      return !!s.locked && !!safeTrim(s.sessionStartedAt);
+    },
+
+    formatDuration(sec){
+      const total = Math.max(0, Number(sec) || 0);
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      return h > 0 ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    },
+
+    getFullDateLabel(iso){
+      if(!iso) return '';
+      const d = new Date(iso);
+      if(Number.isNaN(+d)) return '';
+      return d.toLocaleDateString('he-IL');
+    },
+
+    getTimeLabel(iso){
+      if(!iso) return '';
+      const d = new Date(iso);
+      if(Number.isNaN(+d)) return '';
+      return d.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+    },
+
+    openStartSessionModal(rec){
+      this.ensureSessionChrome();
+      this.pendingStartId = safeTrim(rec?.id);
+      if(this.els.startModalText) this.els.startModalText.textContent = `לקוח: ${rec?.fullName || 'לקוח'}`;
+      if(this.els.startModal) this.els.startModal.hidden = false;
+    },
+
+    cancelStartSession(){
+      this.pendingStartId = '';
+      if(this.els.startModal) this.els.startModal.hidden = true;
+      this.render();
+    },
+
+    async startSession(){
+      const rec = this.visibleCustomers().find(x => String(x.id) === String(this.pendingStartId));
+      if(!rec) return this.cancelStartSession();
+      const s = this.getOpsMirrorState(rec);
+      if(s.locked && safeTrim(s.lockedBy) && safeTrim(s.lockedBy) !== safeTrim(Auth?.current?.name)){
+        alert('הלקוח כבר בטיפול מחלקת תפעול במערכת אחרת.');
+        return;
+      }
       const startedAt = nowISO();
-      store.active = true;
-      store.startedAt = startedAt;
-      store.startedBy = safeTrim(Auth?.current?.name);
-      store.finishedAt = '';
-      store.durationSec = 0;
-      store.durationText = '';
-      store.dateFull = this.formatFullDate(startedAt);
-      store.startTime = this.formatClock(startedAt);
-      store.endTime = '';
-      opsStore.locked = true;
-      opsStore.currentStatus = 'ops_in_progress';
-      opsStore.lockedAt = startedAt;
-      opsStore.lockedBy = safeTrim(Auth?.current?.name);
+      s.locked = true;
+      s.phase = 'in_progress';
+      s.lockedBy = safeTrim(Auth?.current?.name) || 'נציג תפעול';
+      s.lockedAt = startedAt;
+      s.sessionStartedAt = startedAt;
+      s.sessionEndedAt = '';
+      s.clientSigned = false;
+      rec.status = 'בטיפול מחלקת תפעול';
       State.data.meta.updatedAt = startedAt;
       rec.updatedAt = startedAt;
-      this.closeStartModal();
+      this.selectedId = rec.id;
+      this.consent = '';
+      if(this.els.startModal) this.els.startModal.hidden = true;
+      this.pendingStartId = '';
+      this.startSessionTicker();
       this.render();
       CustomersUI.render();
-      this.startTimerLoop();
       await App.persist('שיחת שיקוף התחילה');
     },
 
-    async finishCall(){
+    async finishSession(){
       const rec = this.current();
       if(!rec) return;
-      const store = this.getCallState(rec);
-      const opsStore = getOpsWorkflowState(rec);
-      if(!store.active || !store.startedAt) return;
-      const finishedAt = nowISO();
-      const durationSec = Math.max(0, Math.floor((new Date(finishedAt) - new Date(store.startedAt)) / 1000));
-      store.active = false;
-      store.finishedAt = finishedAt;
-      store.durationSec = durationSec;
-      store.durationText = this.formatDuration(durationSec);
-      store.dateFull = this.formatFullDate(store.startedAt);
-      store.startTime = this.formatClock(store.startedAt);
-      store.endTime = this.formatClock(finishedAt);
-      store.finishedBy = safeTrim(Auth?.current?.name);
-      opsStore.locked = false;
-      opsStore.currentStatus = 'awaiting_signatures';
-      opsStore.lastCompletedAt = finishedAt;
-      opsStore.lastCompletedBy = safeTrim(Auth?.current?.name);
-      opsStore.lastDurationText = store.durationText;
-      State.data.meta.updatedAt = finishedAt;
-      rec.updatedAt = finishedAt;
-      this.stopTimerLoop();
+      const s = this.getOpsMirrorState(rec);
+      if(!s.locked || !safeTrim(s.sessionStartedAt)) return;
+      const endedAt = nowISO();
+      const started = new Date(s.sessionStartedAt).getTime();
+      const ended = new Date(endedAt).getTime();
+      const durationSec = Math.max(0, Math.round((ended - started) / 1000));
+      s.locked = false;
+      s.phase = 'waiting_signatures';
+      s.sessionEndedAt = endedAt;
+      s.durationSec = durationSec;
+      s.durationText = this.formatDuration(durationSec);
+      s.lastSessionDate = this.getFullDateLabel(s.sessionStartedAt);
+      s.lastSessionStartTime = this.getTimeLabel(s.sessionStartedAt);
+      s.lastSessionDurationText = s.durationText;
+      rec.status = 'בוצע שיקוף · ממתין לחתימות מבוטח וסוכן';
+      State.data.meta.updatedAt = endedAt;
+      rec.updatedAt = endedAt;
+      this.stopSessionTicker();
       this.render();
       CustomersUI.render();
       await App.persist('שיחת שיקוף הסתיימה');
-      alert(`שיחת השיקוף נשמרה. תאריך: ${store.dateFull} · התחלה: ${store.startTime} · משך: ${store.durationText}`);
     },
 
-    async markCurrentCustomerSigned(){
+    startSessionTicker(){
+      this.ensureSessionChrome();
+      this.stopSessionTicker();
+      this._sessionTimer = window.setInterval(() => this.updateSessionBar(), 1000);
+      this.updateSessionBar();
+    },
+
+    stopSessionTicker(){
+      window.clearInterval(this._sessionTimer);
+      this._sessionTimer = null;
+      if(this.els.sessionBar) this.els.sessionBar.hidden = true;
+    },
+
+    updateSessionBar(){
+      this.ensureSessionChrome();
       const rec = this.current();
-      if(!rec || !Auth.isOps()) return;
-      const opsStore = getOpsWorkflowState(rec);
-      opsStore.locked = false;
-      opsStore.currentStatus = 'client_signed';
-      opsStore.clientSignedAt = nowISO();
-      opsStore.clientSignedBy = safeTrim(Auth?.current?.name);
-      rec.updatedAt = opsStore.clientSignedAt;
-      State.data.meta.updatedAt = opsStore.clientSignedAt;
-      this.render();
-      CustomersUI.render();
-      await App.persist('סטטוס שיקוף עודכן: הלקוח חתם');
-    },
-
-    startTimerLoop(){
-      this.stopTimerLoop();
-      const tick = () => this.renderCallBar();
-      tick();
-      this._timerHandle = window.setInterval(tick, 1000);
-    },
-
-    stopTimerLoop(){
-      if(this._timerHandle){
-        window.clearInterval(this._timerHandle);
-        this._timerHandle = null;
+      if(!rec){
+        if(this.els.sessionBar) this.els.sessionBar.hidden = true;
+        return;
       }
-      this.renderCallBar();
-    },
-
-    renderCallBar(){
-      if(!this.els.callBar) return;
-      const rec = this.current();
-      const store = rec ? this.getCallState(rec) : null;
-      const active = !!(rec && store?.active && store?.startedAt);
-      this.els.callBar.style.display = active ? 'flex' : 'none';
-      if(!active) return;
-      const seconds = Math.max(0, Math.floor((Date.now() - new Date(store.startedAt).getTime()) / 1000));
-      if(this.els.callTimer) this.els.callTimer.textContent = this.formatDuration(seconds);
-      if(this.els.callMeta) this.els.callMeta.textContent = `התחיל ב־${store.startTime || this.formatClock(store.startedAt)} · ${store.dateFull || this.formatFullDate(store.startedAt)} · ${safeTrim(store.startedBy) || 'נציג'}`;
+      const s = this.getOpsMirrorState(rec);
+      if(!s.locked || !safeTrim(s.sessionStartedAt)){
+        if(this.els.sessionBar) this.els.sessionBar.hidden = true;
+        return;
+      }
+      const sec = Math.max(0, Math.round((Date.now() - new Date(s.sessionStartedAt).getTime()) / 1000));
+      if(this.els.sessionCustomer) this.els.sessionCustomer.textContent = rec.fullName || 'לקוח';
+      if(this.els.sessionStart) this.els.sessionStart.textContent = `התחלה: ${this.getTimeLabel(s.sessionStartedAt)}`;
+      if(this.els.sessionTimer) this.els.sessionTimer.textContent = this.formatDuration(sec);
+      if(this.els.sessionBar) this.els.sessionBar.hidden = false;
     },
 
     reset(){
@@ -6667,33 +6680,15 @@ const MIRROR_DISCLOSURE_LIBRARY = {
       this.els.modal = $("#mirrorsSearchModal");
       this.els.openBtn = $("#btnOpenMirrorsSearch");
       this.els.closeBtn = $("#btnCloseMirrorsSearch");
-      this.els.startModal = $("#mirrorsStartModal");
-      this.els.startText = $("#mirrorsStartModalText");
-      this.els.startConfirmBtn = $("#btnConfirmMirrorsStart");
-      this.els.startCancelBtn = $("#btnCancelMirrorsStart");
-      this.els.callBar = $("#mirrorsCallBar");
-      this.els.callTimer = $("#mirrorsCallTimer");
-      this.els.callMeta = $("#mirrorsCallMeta");
-      this.els.finishCallBtn = $("#btnFinishMirrorCall");
+      this.ensureSessionChrome();
 
       on(this.els.openBtn, "click", () => this.openSearch());
       on(this.els.closeBtn, "click", () => this.closeSearch());
       on(this.els.modal, "click", (ev) => {
         if(ev.target?.matches?.('[data-close-mirrors-search]')) this.closeSearch();
       });
-      on(this.els.startModal, "click", (ev) => {
-        if(ev.target?.matches?.('[data-close-mirrors-start]')) this.closeStartModal();
-      });
-      on(this.els.startCancelBtn, "click", () => this.closeStartModal());
-      on(this.els.startConfirmBtn, "click", () => this.startCall());
-      on(this.els.finishCallBtn, "click", () => this.finishCall());
-      on(this.els.customerHero, 'click', (ev) => {
-        const btn = ev.target?.closest?.('[data-mirror-mark-signed]');
-        if(btn) this.markCurrentCustomerSigned();
-      });
       on(document, "keydown", (ev) => {
         if(ev.key === "Escape" && !this.els.modal?.hasAttribute("hidden")) this.closeSearch();
-        if(ev.key === "Escape" && !this.els.startModal?.hasAttribute("hidden")) this.closeStartModal();
       });
       on(this.els.searchBtn, "click", () => this.search());
       on(this.els.input, "keydown", (ev) => {
@@ -6952,160 +6947,12 @@ const MIRROR_DISCLOSURE_LIBRARY = {
       });
     },
 
-    _timerHandle: null,
-
-    getCallState(rec){
-      if(!rec.payload || typeof rec.payload !== 'object') rec.payload = {};
-      if(!rec.payload.mirrorFlow || typeof rec.payload.mirrorFlow !== 'object') rec.payload.mirrorFlow = {};
-      if(!rec.payload.mirrorFlow.callSession || typeof rec.payload.mirrorFlow.callSession !== 'object') rec.payload.mirrorFlow.callSession = {};
-      const store = rec.payload.mirrorFlow.callSession;
-      if(typeof store.active !== 'boolean') store.active = false;
-      return store;
-    },
-
-    formatDuration(totalSec){
-      const s = Math.max(0, Number(totalSec) || 0);
-      const hh = String(Math.floor(s / 3600)).padStart(2,'0');
-      const mm = String(Math.floor((s % 3600) / 60)).padStart(2,'0');
-      const ss = String(s % 60).padStart(2,'0');
-      return hh !== '00' ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
-    },
-
-    formatFullDate(v){
-      if(!v) return '—';
-      const d = new Date(v);
-      if(Number.isNaN(+d)) return String(v);
-      try{ return d.toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit', year:'numeric' }); }catch(_e){ return String(v); }
-    },
-
-    formatClock(v){
-      if(!v) return '—';
-      const d = new Date(v);
-      if(Number.isNaN(+d)) return '—';
-      try{ return d.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }catch(_e){ return '—'; }
-    },
-
-    openStartModal(){
-      const rec = this.current();
-      if(!rec || !this.els.startModal) return;
-      if(this.els.startText){
-        this.els.startText.textContent = `נבחר הלקוח ${rec.fullName || 'לקוח'}. לחץ על התחלה כדי לפתוח את מסך השיקוף ולהפעיל שעון שיחה.`;
-      }
-      this.els.startModal.hidden = false;
-    },
-
-    closeStartModal(){
-      if(this.els.startModal) this.els.startModal.hidden = true;
-    },
-
-    async startCall(){
-      const rec = this.current();
-      if(!rec) return;
-      const store = this.getCallState(rec);
-      const opsStore = getOpsWorkflowState(rec);
-      const startedAt = nowISO();
-      store.active = true;
-      store.startedAt = startedAt;
-      store.startedBy = safeTrim(Auth?.current?.name);
-      store.finishedAt = '';
-      store.durationSec = 0;
-      store.durationText = '';
-      store.dateFull = this.formatFullDate(startedAt);
-      store.startTime = this.formatClock(startedAt);
-      store.endTime = '';
-      opsStore.locked = true;
-      opsStore.currentStatus = 'ops_in_progress';
-      opsStore.lockedAt = startedAt;
-      opsStore.lockedBy = safeTrim(Auth?.current?.name);
-      State.data.meta.updatedAt = startedAt;
-      rec.updatedAt = startedAt;
-      this.closeStartModal();
-      this.render();
-      CustomersUI.render();
-      this.startTimerLoop();
-      await App.persist('שיחת שיקוף התחילה');
-    },
-
-    async finishCall(){
-      const rec = this.current();
-      if(!rec) return;
-      const store = this.getCallState(rec);
-      const opsStore = getOpsWorkflowState(rec);
-      if(!store.active || !store.startedAt) return;
-      const finishedAt = nowISO();
-      const durationSec = Math.max(0, Math.floor((new Date(finishedAt) - new Date(store.startedAt)) / 1000));
-      store.active = false;
-      store.finishedAt = finishedAt;
-      store.durationSec = durationSec;
-      store.durationText = this.formatDuration(durationSec);
-      store.dateFull = this.formatFullDate(store.startedAt);
-      store.startTime = this.formatClock(store.startedAt);
-      store.endTime = this.formatClock(finishedAt);
-      store.finishedBy = safeTrim(Auth?.current?.name);
-      opsStore.locked = false;
-      opsStore.currentStatus = 'awaiting_signatures';
-      opsStore.lastCompletedAt = finishedAt;
-      opsStore.lastCompletedBy = safeTrim(Auth?.current?.name);
-      opsStore.lastDurationText = store.durationText;
-      State.data.meta.updatedAt = finishedAt;
-      rec.updatedAt = finishedAt;
-      this.stopTimerLoop();
-      this.render();
-      CustomersUI.render();
-      await App.persist('שיחת שיקוף הסתיימה');
-      alert(`שיחת השיקוף נשמרה. תאריך: ${store.dateFull} · התחלה: ${store.startTime} · משך: ${store.durationText}`);
-    },
-
-    async markCurrentCustomerSigned(){
-      const rec = this.current();
-      if(!rec || !Auth.isOps()) return;
-      const opsStore = getOpsWorkflowState(rec);
-      opsStore.locked = false;
-      opsStore.currentStatus = 'client_signed';
-      opsStore.clientSignedAt = nowISO();
-      opsStore.clientSignedBy = safeTrim(Auth?.current?.name);
-      rec.updatedAt = opsStore.clientSignedAt;
-      State.data.meta.updatedAt = opsStore.clientSignedAt;
-      this.render();
-      CustomersUI.render();
-      await App.persist('סטטוס שיקוף עודכן: הלקוח חתם');
-    },
-
-    startTimerLoop(){
-      this.stopTimerLoop();
-      const tick = () => this.renderCallBar();
-      tick();
-      this._timerHandle = window.setInterval(tick, 1000);
-    },
-
-    stopTimerLoop(){
-      if(this._timerHandle){
-        window.clearInterval(this._timerHandle);
-        this._timerHandle = null;
-      }
-      this.renderCallBar();
-    },
-
-    renderCallBar(){
-      if(!this.els.callBar) return;
-      const rec = this.current();
-      const store = rec ? this.getCallState(rec) : null;
-      const active = !!(rec && store?.active && store?.startedAt);
-      this.els.callBar.style.display = active ? 'flex' : 'none';
-      if(!active) return;
-      const seconds = Math.max(0, Math.floor((Date.now() - new Date(store.startedAt).getTime()) / 1000));
-      if(this.els.callTimer) this.els.callTimer.textContent = this.formatDuration(seconds);
-      if(this.els.callMeta) this.els.callMeta.textContent = `התחיל ב־${store.startTime || this.formatClock(store.startedAt)} · ${store.dateFull || this.formatFullDate(store.startedAt)} · ${safeTrim(store.startedBy) || 'נציג'}`;
-    },
-
     reset(){
       this.selectedId = "";
       this.consent = "";
       this.lastResults = [];
       if(this.els.input) this.els.input.value = "";
       this.closeSearch();
-      this.closeStartModal();
-      this.stopTimerLoop();
       this.render();
     },
 
@@ -7159,18 +7006,11 @@ const MIRROR_DISCLOSURE_LIBRARY = {
     },
 
     selectCustomer(id){
-      this.selectedId = String(id);
+      const rec = this.visibleCustomers().find(x => String(x.id) === String(id));
       this.consent = "";
       this.closeSearch();
-      const rec = this.current();
-      const call = rec ? this.getCallState(rec) : null;
-      this.render();
-      if(call?.active){
-        this.startTimerLoop();
-      }else{
-        this.stopTimerLoop();
-        this.openStartModal();
-      }
+      if(!rec) return this.render();
+      this.openStartSessionModal(rec);
     },
 
     renderResults(noteText){
@@ -7203,14 +7043,14 @@ const MIRROR_DISCLOSURE_LIBRARY = {
       const rec = this.current();
       this.updateSteps(rec);
       if(this.els.heroMeta){
-        this.els.heroMeta.textContent = rec ? `שיקוף פעיל · ${rec.fullName || 'לקוח'} · ${rec.phone || rec.idNumber || '—'}` : 'טרם נבחר לקוח לשיקוף';
+        const statusText = rec ? CustomersUI.getCustomerStatusText(rec) : '';
+        this.els.heroMeta.textContent = rec ? `שיקוף פעיל · ${rec.fullName || 'לקוח'} · ${statusText}` : 'טרם נבחר לקוח לשיקוף';
       }
       if(this.els.openBtn){
         this.els.openBtn.textContent = rec ? '🔍 איתור לקוח חדש' : '🔍 איתור לקוח לשיקוף';
       }
       if(!rec){
-        this.closeStartModal();
-        this.stopTimerLoop();
+        this.stopSessionTicker();
         if(this.els.empty) this.els.empty.style.display = '';
         if(this.els.flow) this.els.flow.style.display = 'none';
         if(this.els.reflectCard){ this.els.reflectCard.style.display = 'none'; this.els.reflectCard.innerHTML = ''; }
@@ -7223,13 +7063,9 @@ const MIRROR_DISCLOSURE_LIBRARY = {
         if(this.els.customerHero) this.els.customerHero.innerHTML = '';
         return;
       }
-      const call = this.getCallState(rec);
-      const readyForFlow = !!(call.active || call.startedAt);
-      if(this.els.empty) this.els.empty.style.display = readyForFlow ? 'none' : '';
-      if(this.els.flow) this.els.flow.style.display = readyForFlow ? 'grid' : 'none';
-      this.renderCallBar();
-      if(!readyForFlow) return;
-      if(call.active) this.startTimerLoop(); else this.stopTimerLoop();
+      if(this.els.empty) this.els.empty.style.display = 'none';
+      if(this.els.flow) this.els.flow.style.display = 'grid';
+      this.updateSessionBar();
       this.renderCustomerHero(rec);
       this.renderScript(rec);
       this.renderVerification(rec);
@@ -7452,24 +7288,20 @@ const MIRROR_DISCLOSURE_LIBRARY = {
         const logo = src ? `<img class="mirrorsChip__logoImg" src="${escapeHtml(src)}" alt="${escapeHtml(company)}" />` : `<span class="mirrorsChip__logoFallback">${escapeHtml((company || '•').slice(0,1))}</span>`;
         return `<span class="mirrorsChip">${logo}<span>${escapeHtml(company)}</span></span>`;
       }).join('') : `<span class="mirrorsChip mirrorsChip--muted">לא הוגדרו חברות בפוליסות חדשות</span>`;
-      const opsUi = getCustomerOpsUiState(rec);
-      const followupHtml = opsUi.key !== 'default' ? `<div class="mirrorsOpsBanner mirrorsOpsBanner--${escapeHtml(opsUi.key)}">
-          <div class="mirrorsOpsBanner__textWrap">
-            <div class="mirrorsOpsBanner__title">${escapeHtml(opsUi.label)}</div>
-            <div class="mirrorsOpsBanner__sub">${escapeHtml(opsUi.key === 'awaiting_signatures' ? 'בוצע שיקוף ללקוח. כעת ממתינים לחתימות מבוטח וסוכן.' : opsUi.key === 'client_signed' ? 'הלקוח חתם והסטטוס עודכן בהצלחה.' : 'התיק נמצא בטיפול מחלקת תפעול עד סיום שיחת השיקוף.')}</div>
-          </div>
-          ${(Auth.isOps() && opsUi.key === 'awaiting_signatures') ? `<button class="btn" data-mirror-mark-signed type="button">סמן שהלקוח חתם</button>` : ''}
-        </div>` : '';
+      const opsState = this.getOpsMirrorState(rec);
+      const lastSession = safeTrim(opsState.lastSessionDate)
+        ? `<div class="mirrorsCustomerHero__session">שיקוף אחרון: ${escapeHtml(opsState.lastSessionDate)} · ${escapeHtml(opsState.lastSessionStartTime || '—')} · ${escapeHtml(opsState.lastSessionDurationText || '—')}</div>`
+        : '';
       this.els.customerHero.innerHTML = `<div class="mirrorsCustomerHero__main">
         <div>
           <div class="mirrorsCustomerHero__kicker">לקוח שנבחר לשיקוף</div>
           <div class="mirrorsCustomerHero__name">${escapeHtml(rec.fullName || 'לקוח')}</div>
           <div class="mirrorsCustomerHero__meta">ת״ז ${escapeHtml(rec.idNumber || primary.idNumber || '—')} · טלפון ${escapeHtml(rec.phone || primary.phone || '—')} · נציג מטפל ${escapeHtml(rec.agentName || '—')}</div>
+          ${lastSession}
         </div>
-        <div class="mirrorsCustomerHero__status">${escapeHtml(opsUi.label)}</div>
+        <div class="mirrorsCustomerHero__status">${escapeHtml(CustomersUI.getCustomerStatusText(rec))}</div>
       </div>
-      <div class="mirrorsCustomerHero__chips">${companyChips}</div>
-      ${followupHtml}`;
+      <div class="mirrorsCustomerHero__chips">${companyChips}</div>`;
     },
 
     renderScript(rec){
@@ -8524,6 +8356,42 @@ const MIRROR_DISCLOSURE_LIBRARY = {
 
 const App = {
     _bootPromise: null,
+    _liveTimer: null,
+    _syncBusy: false,
+
+    startLiveRefresh(){
+      if(this._liveTimer) window.clearInterval(this._liveTimer);
+      this._liveTimer = window.setInterval(() => { this.liveRefreshTick(); }, 6000);
+    },
+
+    async liveRefreshTick(){
+      if(this._syncBusy || !Auth.current) return;
+      const view = safeTrim(UI.currentView || '');
+      if(view !== 'customers' && view !== 'mirrors') return;
+      if(Wizard?.isOpen) return;
+      if(view === 'mirrors' && MirrorsUI?.isSessionActive?.()) return;
+      const active = document.activeElement;
+      if(view === 'mirrors' && active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName || '')) return;
+      this._syncBusy = true;
+      try {
+        const r = await Storage.loadSheets();
+        if(r.ok){
+          State.data = r.payload;
+          Storage.saveBackup(State.data);
+          UI.renderSyncStatus('סנכרון חי', 'ok', r.at);
+          CustomersUI.render();
+          if(CustomersUI.currentId){
+            const current = CustomersUI.byId(CustomersUI.currentId);
+            if(current && !CustomersUI.isOpsLocked(current)) CustomersUI.openById(CustomersUI.currentId);
+            else if(current && CustomersUI.isOpsLocked(current)) CustomersUI.close();
+          }
+          if(view === 'mirrors') MirrorsUI.render();
+        }
+      } catch(_e) {
+      } finally {
+        this._syncBusy = false;
+      }
+    },
 
     async boot(){
       Storage.restoreUrl();
@@ -8547,6 +8415,8 @@ const App = {
 
       // sync gsUrl field
       if (UI.els.gsUrl) UI.els.gsUrl.value = Storage.gsUrl || "";
+
+      this.startLiveRefresh();
 
       // after state is ready: apply role UI
       UI.applyRoleUI();
@@ -8586,6 +8456,7 @@ const App = {
         if (Auth.current) {
           CustomersUI.render();
           ProposalsUI.render();
+          MirrorsUI.render();
         }
       } else {
         UI.renderSyncStatus("שגיאה בטעינת נתוני משתמש", "err", null, r.error);
@@ -8602,7 +8473,7 @@ const App = {
         Storage.saveBackup(State.data);
         UI.renderSyncStatus("סונכרן", "ok", r.at);
         if (Auth.isAdmin()) UsersUI.render();
-        if (Auth.current) { CustomersUI.render(); ProposalsUI.render(); }
+        if (Auth.current) { CustomersUI.render(); ProposalsUI.render(); MirrorsUI.render(); }
       } else {
         UI.renderSyncStatus("שגיאה בסנכרון", "err", null, r.error);
       }
