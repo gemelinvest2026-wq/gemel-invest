@@ -9573,3 +9573,39 @@ const SystemRepairUI = {
   App.startLiveSync();
 
 })();
+// ===== AUTO SYNC REFLECT STATUS =====
+
+let lastSyncHash = "";
+
+async function autoSyncReflect(){
+  try{
+    const res = await fetch(API_URL + "?action=get");
+    const data = await res.json();
+
+    if(!data?.payload) return;
+
+    const newHash = JSON.stringify(data.payload.customers);
+
+    // רק אם יש שינוי אמיתי
+    if(newHash !== lastSyncHash){
+      lastSyncHash = newHash;
+
+      state.customers = data.payload.customers;
+
+      // רענון UI
+      if(typeof renderCustomers === "function") renderCustomers();
+      if(typeof renderCustomerDetails === "function") renderCustomerDetails();
+
+      // אם דוח שיקופים פתוח → לרענן אותו
+      if(document.getElementById("reflectModal")){
+        openReflectReport();
+      }
+    }
+
+  }catch(err){
+    console.log("sync error", err);
+  }
+}
+
+// כל 5 שניות
+setInterval(autoSyncReflect, 5000);
