@@ -10894,14 +10894,14 @@ const MIRROR_DISCLOSURE_LIBRARY = {
       this.render();
       try { await App.persist('נתון הועתק במסך תפעול'); } catch(_e) {}
     },
-    toggleDrawer(){
+    async toggleDrawer(){
       const isOpen = this.els.drawer.classList.toggle('is-open');
       this.els.drawer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
       if(isOpen){
-        const rec = this.current();
-        if(rec && Array.isArray(rec.payload.opsCorrections)){
-          rec.payload.opsCorrections.forEach(item => { if(item && !item.handled) item.unread = false; });
+        const sync = await this.refreshLiveFromServer({ markRead:true });
+        if(sync?.ok){
           this.render();
+          try { await App.persist('תיקונים נקראו במסך תפעול'); } catch(_e) {}
         }
       }
     },
@@ -10939,9 +10939,10 @@ const MIRROR_DISCLOSURE_LIBRARY = {
       }
       this._lastUnread = currentUnread;
       window.clearInterval(this._watchTimer);
-      this._watchTimer = window.setInterval(() => {
+      this._watchTimer = window.setInterval(async () => {
         if(!this.els.wrap.classList.contains('is-open')) return;
-        const liveRec = this.current();
+        const sync = await this.refreshLiveFromServer();
+        const liveRec = sync?.rec || this.current();
         if(!liveRec) return;
         const unreadNow = (Array.isArray(liveRec.payload.opsCorrections) ? liveRec.payload.opsCorrections.filter(item => item && item.unread && !item.handled).length : 0);
         if(unreadNow > (this._lastUnread || 0)) this.notifyNewCorrection((liveRec.payload.opsCorrections || [])[0]);
@@ -10950,13 +10951,48 @@ const MIRROR_DISCLOSURE_LIBRARY = {
       }, 2000);
       try { App.persist('מסך תפעול נפתח'); } catch(_e) {}
     },
+    async refreshLiveFromServer(options = {}){
+      if(!this.customerId) return { ok:false, skipped:true, reason:'no-customer' };
+      try {
+        const res = await Storage.loadSheets();
+        if(!res?.ok) return res || { ok:false, error:'LOAD_FAILED' };
+        const freshState = res.payload || {};
+        if(freshState && typeof freshState === 'object'){
+          State.data = freshState;
+          try { Storage.saveBackup(State.data); } catch(_e) {}
+        }
+        const liveRec = this.current();
+        if(!liveRec) return { ok:false, skipped:true, reason:'customer-missing' };
+        if(options?.markRead && Array.isArray(liveRec.payload?.opsCorrections)){
+          liveRec.payload.opsCorrections.forEach(item => { if(item && !item.handled) item.unread = false; });
+        }
+        return { ok:true, rec: liveRec, at: res.at || nowISO() };
+      } catch(err) {
+        console.error('OPS_WORKBENCH_REFRESH_FAILED:', err?.message || err);
+        return { ok:false, error:String(err?.message || err) };
+      }
+    },
     close(){
       if(!this.els.wrap) return;
+      const rec = this.current();
+      if(rec?.payload?.opsWorkbench && typeof rec.payload.opsWorkbench === 'object'){
+        rec.payload.opsWorkbench.active = false;
+        rec.payload.opsWorkbench.finishedAt = nowISO();
+        rec.payload.opsWorkbench.lastClosedBy = safeTrim(Auth?.current?.name) || 'תפעול';
+      }
+      if(rec && safeTrim(rec.status).includes('תפעול')){
+        rec.status = 'ממתין לשיקוף';
+        rec.updatedAt = nowISO();
+        State.data.meta.updatedAt = nowISO();
+        try { App.persist('מסך תפעול נסגר'); } catch(_e) {}
+      }
       this.els.wrap.classList.remove('is-open');
       this.els.wrap.setAttribute('aria-hidden','true');
       document.body.style.overflow = '';
       window.clearInterval(this._watchTimer);
       this.closeDrawer();
+      this.customerId = null;
+      this._lastUnread = 0;
     }
   };
   window.OpsWorkbenchUI = OpsWorkbenchUI;
