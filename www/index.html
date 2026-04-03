@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GEMEL INVEST Mobile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <div class="ambient ambient-c"></div>
+
+    <main class="phone-frame">
+      <section id="welcomeScreen" class="screen screen-active">
+        <div class="welcome-center fade-up">
+          <div class="brand-wrap">
+            <div class="logo-glass">
+              <img src="./logo-login-clean.png" alt="GEMEL INVEST" class="brand-logo" />
+            </div>
+            <div class="brand-name">GEMEL INVEST</div>
+            <p class="brand-subtitle">ביטוח דיגיטלי חכם מהיום למחר</p>
+            <p class="brand-caption">הצעה מהירה, יוקרתית ומדויקת במסך אחד</p>
+          </div>
+
+          <div class="cta-area fade-up fade-delay-1">
+            <button id="startBtn" class="primary-btn">קבל הצעה</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="quoteScreen" class="screen">
+        <header class="topbar">
+          <button id="backBtn" class="icon-btn" aria-label="חזור">←</button>
+          <div class="topbar-title-wrap">
+            <div class="topbar-eyebrow">שלב ראשון</div>
+            <h2 class="topbar-title">פתיחת בקשה להצעה</h2>
+          </div>
+        </header>
+
+        <div class="progress-row" aria-hidden="true">
+          <span class="progress-line progress-line-active"></span>
+          <span class="progress-line"></span>
+          <span class="progress-line"></span>
+        </div>
+
+        <section class="glass-card form-card reveal">
+          <div class="section-head">
+            <span class="section-kicker">פרטים בסיסיים</span>
+            <h3>בואו נתחיל בכמה פרטים קצרים</h3>
+          </div>
+
+          <form id="quoteForm" class="form-grid">
+            <label class="field">
+              <span>שם מלא</span>
+              <input id="fullName" type="text" placeholder="הקלד שם מלא" autocomplete="name" />
+            </label>
+
+            <label class="field">
+              <span>טלפון</span>
+              <input id="phone" type="tel" placeholder="הקלד מספר טלפון" autocomplete="tel" inputmode="tel" />
+            </label>
+          </form>
+        </section>
+
+        <section class="glass-card reveal reveal-delay-1">
+          <div class="section-head">
+            <span class="section-kicker">תחום ביטוח</span>
+            <h3>בחר תחום שמעניין אותך</h3>
+          </div>
+          <div id="categoryGrid" class="choice-grid"></div>
+        </section>
+
+        <section id="companySection" class="glass-card reveal reveal-delay-2 company-section hidden">
+          <div class="section-head company-head">
+            <div>
+              <span class="section-kicker">חברות פעילות</span>
+              <h3>בחר חברה</h3>
+            </div>
+            <div id="selectedCategoryBadge" class="selected-badge"></div>
+          </div>
+          <div id="companyGrid" class="company-grid"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
