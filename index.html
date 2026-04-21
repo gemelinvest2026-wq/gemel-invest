@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מנוע הצעת ביטוח — פניקס בריאות</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#C0392B;--red-light:#fdf2f1;
+  --green:#16a085;--green-light:#e8f8f5;
+  --dark:#1a1a2e;--surface:#fff;--bg:#f5f4f0;
+  --border:rgba(0,0,0,0.09);--muted:#888;--radius:12px;
+  --shadow:0 2px 12px rgba(0,0,0,0.07);
+}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--dark);min-height:100vh}
+.header{background:var(--dark);color:#fff;padding:1.25rem 2rem;display:flex;align-items:center;gap:14px}
+.header-logo{width:42px;height:42px;background:var(--red);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header-logo svg{width:24px;height:24px}
+.header-title{font-size:18px;font-weight:700}
+.header-sub{font-size:12px;opacity:0.5;margin-top:2px}
+.steps-bar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:0.75rem 2rem;display:flex;align-items:center;gap:4px;overflow-x:auto}
+.step-item{display:flex;align-items:center;gap:8px;white-space:nowrap;padding:0 6px}
+.step-num{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0;transition:all 0.3s}
+.step-label{font-size:13px;color:var(--muted);transition:color 0.3s}
+.step-arrow{color:var(--border);font-size:18px;margin:0 2px}
+.step-item.active .step-num{background:var(--dark);color:#fff;border-color:var(--dark)}
+.step-item.active .step-label{color:var(--dark);font-weight:600}
+.step-item.done .step-num{background:var(--green);color:#fff;border-color:var(--green)}
+.step-item.done .step-label{color:var(--green)}
+main{max-width:860px;margin:0 auto;padding:2rem 1rem}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.75rem;margin-bottom:1.25rem;animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:0.5px solid var(--border)}
+.card-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.card-icon.red{background:var(--red-light)}.card-icon.green{background:var(--green-light)}
+.card-title{font-size:15px;font-weight:700}
+.card-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.api-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.api-input{flex:1;min-width:200px;padding:11px 14px;font-size:14px;border:1.5px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;background:#fafafa}
+.api-input:focus{outline:none;border-color:var(--dark);background:#fff}
+.api-hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6}
+.api-hint a{color:var(--green);text-decoration:none;font-weight:600}
+.free-badge{display:inline-block;background:#e8f8f5;color:#0e6b59;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-right:6px}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:2.5rem;text-align:center;cursor:pointer;transition:all 0.2s}
+.upload-zone:hover,.upload-zone.over{border-color:var(--red);background:var(--red-light)}
+.upload-icon{font-size:48px;margin-bottom:12px;display:block}
+.upload-title{font-size:16px;font-weight:600;margin-bottom:6px}
+.upload-sub{font-size:13px;color:var(--muted)}
+input[type=file]{display:none}
+.file-pill{display:inline-flex;align-items:center;gap:8px;background:var(--dark);color:#fff;border-radius:30px;padding:8px 16px;font-size:13px;font-weight:500;margin-top:14px}
+.file-pill .rm{cursor:pointer;opacity:0.6;margin-right:4px}.file-pill .rm:hover{opacity:1;color:#ff6b6b}
+.prog-wrap{margin-top:1rem;display:none}
+.prog-label{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between}
+.prog-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);width:0%;transition:width 0.5s ease;border-radius:2px}
+.status-msg{display:none;border-radius:8px;padding:12px 16px;font-size:13px;margin-top:10px;align-items:center;gap:10px}
+.status-msg.loading{display:flex;background:#EEF4FF;color:#1a56db}
+.status-msg.ok{display:flex;background:var(--green-light);color:#0e6b59}
+.status-msg.err{display:flex;background:var(--red-light);color:var(--red)}
+.spin{width:14px;height:14px;border:2px solid #93c5fd;border-top-color:#1a56db;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1.25rem 0 0.75rem;padding-bottom:0.5rem;border-bottom:0.5px solid var(--border)}
+.fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field-cell{border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;background:var(--bg)}
+.field-cell.filled{background:var(--green-light);border-color:#7dcea0}
+.fl{font-size:11px;color:var(--muted);margin-bottom:3px}
+.fv{font-size:13px;font-weight:600;color:var(--dark)}
+.fv.empty{color:#ccc;font-weight:400;font-style:italic}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:'Heebo',sans-serif;transition:all 0.2s}
+.btn-full{width:100%}
+.btn-dark{background:var(--dark);color:#fff}.btn-dark:hover:not(:disabled){background:#2d2d4a}.btn-dark:disabled{opacity:0.3;cursor:not-allowed}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#0e8a72}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}.btn-ghost:hover{background:var(--bg)}
+.result-box{text-align:center;padding:2rem 1rem}
+.result-icon{font-size:64px;display:block;margin-bottom:16px;animation:pop 0.5s ease}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.result-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-sub{font-size:14px;color:var(--muted);margin-bottom:2rem}
+.result-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+@media(max-width:580px){.fields-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L22 8.5V15.5L12 22L2 15.5V8.5L12 2Z" fill="white" opacity="0.9"/></svg>
+  </div>
+  <div>
+    <div class="header-title">מנוע הצעת ביטוח — פניקס בריאות</div>
+    <div class="header-sub">GEMEL INVEST ← טופס 300302095 ממולא אוטומטית</div>
+  </div>
+</div>
+
+<div class="steps-bar">
+  <div class="step-item active" id="s1"><div class="step-num">1</div><span class="step-label">הגדרה</span></div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" id="s2"><div class="step-num">2</div><span class="step-label">העלאת דוח</span></div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" id="s3"><div class="step-num">3</div><span class="step-label">בדיקה</span></div>
+  <div class="step-arrow">›</div>
+  <div class="step-item" id="s4"><div class="step-num">4</div><span class="step-label">PDF מוכן</span></div>
+</div>
+
+<main>
+
+<div class="card" id="cardKey">
+  <div class="card-header">
+    <div class="card-icon red">🔑</div>
+    <div>
+      <div class="card-title">Google Gemini Key <span class="free-badge">חינמי לחלוטין</span></div>
+      <div class="card-sub">נשמר רק בדפדפן שלך — לא יוצא לשום שרת</div>
+    </div>
+  </div>
+  <div class="api-row">
+    <input class="api-input" type="password" id="geminiKey" placeholder="AIza...">
+    <button class="btn btn-dark" onclick="saveKey()">שמור ←</button>
+  </div>
+  <div class="api-hint">
+    קבל key חינמי ב-2 דקות:<br>
+    1. נכנס ל <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a><br>
+    2. לחץ <strong>"Get API Key"</strong> ← <strong>"Create API key"</strong><br>
+    3. העתק והדבק כאן — זהו!
+  </div>
+</div>
+
+<div class="card" id="cardUpload" style="display:none">
+  <div class="card-header">
+    <div class="card-icon red">📋</div>
+    <div><div class="card-title">העלאת דוח תפעולי</div><div class="card-sub">דוח PDF מ-GEMEL INVEST של הלקוח</div></div>
+  </div>
+  <div class="upload-zone" id="dz" onclick="document.getElementById('fi').click()">
+    <span class="upload-icon">📄</span>
+    <div class="upload-title">גרור את הדוח לכאן או לחץ לבחירה</div>
+    <div class="upload-sub">קובץ PDF של הדוח התפעולי מ-GEMEL INVEST</div>
+  </div>
+  <input type="file" id="fi" accept=".pdf,.jpg,.jpeg,.png">
+  <div id="fileChip" style="display:none;text-align:center">
+    <span class="file-pill"><span id="fname">—</span><span class="rm" onclick="clearFile()">✕</span></span>
+  </div>
+  <div style="margin-top:1.25rem">
+    <button class="btn btn-dark btn-full" id="readBtn" disabled onclick="extractData()">חלץ נתונים מהדוח ←</button>
+  </div>
+  <div class="prog-wrap" id="pw1">
+    <div class="prog-label"><span id="progLbl">מנתח...</span><span id="progPct">0%</span></div>
+    <div class="prog-bar"><div class="prog-fill" id="pf1"></div></div>
+  </div>
+  <div class="status-msg" id="st1"></div>
+</div>
+
+<div class="card" id="cardPreview" style="display:none">
+  <div class="card-header">
+    <div class="card-icon green">✅</div>
+    <div><div class="card-title">נתונים שחולצו</div><div class="card-sub">וודא שהפרטים נכונים לפני הפקת הטופס</div></div>
+  </div>
+  <div id="previewContent"></div>
+  <div style="display:flex;gap:10px;margin-top:1.5rem">
+    <button class="btn btn-dark" style="flex:1" id="fillBtn" onclick="fillForm()">מלא טופס והפק PDF ←</button>
+    <button class="btn btn-ghost" onclick="resetUpload()">העלה מחדש</button>
+  </div>
+  <div class="prog-wrap" id="pw2">
+    <div class="prog-label"><span>ממלא טופס...</span><span id="pct2">0%</span></div>
+    <div class="prog-bar"><div class="prog-fill" id="pf2"></div></div>
+  </div>
+  <div class="status-msg" id="st2"></div>
+</div>
+
+<div class="card" id="cardResult" style="display:none">
+  <div class="result-box">
+    <span class="result-icon">📄</span>
+    <div class="result-title">הטופס מוכן לשליחה!</div>
+    <div class="result-sub" id="resultSub">—</div>
+    <div class="result-actions">
+      <a class="btn btn-green" id="dlLink" href="#" download>⬇ הורד PDF ממולא</a>
+      <button class="btn btn-ghost" onclick="resetUpload()">לקוח חדש</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+const FIELDS_MAP = {"InsuranceBegin":{"type":"text","page":1},"SuggestNumber":{"type":"text","page":1},"SupervisorName":{"type":"text","page":1},"AgentNumber":{"type":"text","page":1},"Gender":{"type":"radio_group","page":1,"options":[{"value":"/True","rect":[187.579,615.589,197.412,625.64]},{"value":"/False","rect":[187.579,602.165,197.412,612.216]}]},"FamilyStatus":{"type":"radio_group","page":1,"options":[{"value":"/Married","rect":[119.582,614.954,129.415,625.006]},{"value":"/Single","rect":[144.571,614.729,154.404,624.779]},{"value":"/Widow","rect":[121.823,602.008,131.656,612.06]},{"value":"/Divorced","rect":[144.484,601.666,154.317,611.717]}]},"ShabanR":{"type":"radio_group","page":1,"options":[{"value":"/1","rect":[94.096,614.432,103.93,624.484]},{"value":"/2","rect":[94.9499,602.362,104.784,612.414]}]},"HMO":{"type":"text","page":1},"OccupationCode":{"type":"text","page":1},"BirthDate":{"type":"text","page":1},"FamilyStatusSpouse":{"type":"radio_group","page":1,"options":[{"value":"/Married","rect":[120.343,573.945,130.176,583.996]},{"value":"/Single","rect":[144.167,573.069,154,583.121]},{"value":"/Widow","rect":[122.27,562.384,132.103,572.434]},{"value":"/Divorced","rect":[144.343,560.282,154.176,570.332]}]},"ShabanSpouse":{"type":"radio_group","page":1,"options":[{"value":"/1","rect":[94.4368,573.222,104.27,583.273]},{"value":"/2","rect":[95.1156,562.602,104.949,572.653]}]},"GenderSpouse":{"type":"radio_group","page":1,"options":[{"value":"/True","rect":[187.963,572.894,197.796,582.945]},{"value":"/False","rect":[188.225,561.42,198.058,571.471]}]},"FirstNameSpouse":{"type":"text","page":1},"HMOSpouse":{"type":"text","page":1},"OccupationCodeSpouse":{"type":"text","page":1},"PIDSpouse":{"type":"text","page":1},"LastNameSpouse":{"type":"text","page":1},"BirthDateSpouse":{"type":"text","page":1},"ShabanChild1":{"type":"radio_group","page":1,"options":[{"value":"/1","rect":[94.557,535.282,104.391,545.332]},{"value":"/2","rect":[94.8854,522.734,104.719,532.785]}]},"FamilyStatusChild1":{"type":"radio_group","page":1,"options":[{"value":"/Married","rect":[119.697,534.296,129.53,544.348]},{"value":"/Single","rect":[144.091,533.989,153.924,544.041]},{"value":"/Widow","rect":[122.5,522.47,132.333,532.522]},{"value":"/Divorced","rect":[144.398,522.278,154.231,532.33]}]},"GenderChild1":{"type":"radio_group","page":1,"options":[{"value":"/True","rect":[188.325,534.182,198.158,544.233]},{"value":"/False","rect":[188.325,522.095,198.158,532.147]}]},"FirstNameChild1":{"type":"text","page":1},"BirthDateChild1":{"type":"text","page":1},"HMOChild1":{"type":"text","page":1},"LastNameChild1":{"type":"text","page":1},"PIDChild1":{"type":"text","page":1},"OccupationChild1":{"type":"text","page":1},"ShabanChild2":{"type":"radio_group","page":1,"options":[{"value":"/1","rect":[94.6708,494.961,104.504,505.013]},{"value":"/2","rect":[94.8857,482.809,104.719,492.86]}]},"GenderChild2":{"type":"radio_group","page":1,"options":[{"value":"/True","rect":[187.974,494.566,197.807,504.618]},{"value":"/False","rect":[188.062,483.093,197.895,493.144]}]},"FamilyStatusChild2":{"type":"radio_group","page":1,"options":[{"value":"/Married","rect":[118.69,494.304,128.523,504.355]},{"value":"/Single","rect":[143.653,494.917,153.486,504.969]},{"value":"/Widow","rect":[121.755,482.015,131.588,492.066]},{"value":"/Divorced","rect":[144.003,481.252,153.836,491.304]}]},"BirthDateChild2":{"type":"text","page":1},"LastNameChild2":{"type":"text","page":1},"PIDChild2":{"type":"text","page":1},"FirstNameChild2":{"type":"text","page":1},"HMOChild2":{"type":"text","page":1},"OccupationChild2":{"type":"text","page":1},"FamilyStatusChild3":{"type":"radio_group","page":1,"options":[{"value":"/Married","rect":[119.454,455.268,129.287,465.32]},{"value":"/Single","rect":[143.742,456.029,153.575,466.079]},{"value":"/Widow","rect":[121.425,443.575,131.258,453.626]},{"value":"/Divorced","rect":[144.767,442.829,154.6,452.88]}]},"ShabanChild3":{"type":"radio_group","page":1,"options":[{"value":"/1","rect":[94.493,455.18,104.327,465.23]},{"value":"/2","rect":[94.3795,442.961,104.213,453.013]}]},"GenderChild3":{"type":"radio_group","page":1,"options":[{"value":"/True","rect":[187.95,454.698,197.783,464.75]},{"value":"/False","rect":[187.424,442.349,197.257,452.399]}]},"HMOChild3":{"type":"text","page":1},"LastNameChild3":{"type":"text","page":1},"OccupationChild3":{"type":"text","page":1},"FirstNameChild3":{"type":"text","page":1},"PIDChild3":{"type":"text","page":1},"BirthDateChild3":{"type":"text","page":1},"ShabanChild4":{"type":"radio_group","page":1,"options":[{"value":"/1","rect":[94.0774,415.997,103.911,426.048]},{"value":"/2","rect":[93.9461,403.138,103.779,413.19]}]},"GenderChild4":{"type":"radio_group","page":1,"options":[{"value":"/True","rect":[188.414,415.423,198.247,425.475]},{"value":"/False","rect":[187.899,402.675,197.732,412.727]}]},"FamilyStatusChild4":{"type":"radio_group","page":1,"options":[{"value":"/Married","rect":[118.758,414.459,128.591,424.511]},{"value":"/Single","rect":[143.125,415.073,152.958,425.123]},{"value":"/Widow","rect":[121.017,402.266,130.85,412.318]},{"value":"/Divorced","rect":[144.163,402.198,153.996,412.25]}]},"HMOChild4":{"type":"text","page":1},"FirstNameChild4":{"type":"text","page":1},"BirthDateChild4":{"type":"text","page":1},"OccupationChild4":{"type":"text","page":1},"LastNameChild4":{"type":"text","page":1},"PIDChild4":{"type":"text","page":1},"Email":{"type":"checkbox","page":1,"checked":"/1"},"IsraelMail":{"type":"checkbox","page":1,"checked":"/1"},"EmailAddress":{"type":"text","page":1},"HouseNumber":{"type":"text","page":1},"CellPhoneNumber":{"type":"text","page":1},"City":{"type":"text","page":1},"StreetName":{"type":"text","page":1},"EmailSpouse":{"type":"checkbox","page":1,"checked":"/1"},"IsraelMailSpouse":{"type":"checkbox","page":1,"checked":"/1"},"EmailAddressSpouse":{"type":"text","page":1},"HouseNumberSpouse":{"type":"text","page":1},"CellPhoneNumberSpouse":{"type":"text","page":1},"CitySpouse":{"type":"text","page":1},"StreetNameSpouse":{"type":"text","page":1},"EmailChild":{"type":"checkbox","page":1,"checked":"/1"},"IsraelMailChild":{"type":"checkbox","page":1,"checked":"/1"},"EmailAddressChild1":{"type":"text","page":1},"CellPhoneNumberChild1":{"type":"text","page":1},"StreetNameChild1":{"type":"text","page":1},"HouseNumberChild1":{"type":"text","page":1},"CityChild1":{"type":"text","page":1},"NeedsHatama":{"type":"checkbox","page":2,"checked":"/True"},"FileCopy":{"type":"checkbox","page":2,"checked":"/1"},"MeidaMahuti":{"type":"checkbox","page":2,"checked":"/1"},"NoDuplicateSell":{"type":"checkbox","page":2,"checked":"/True"},"FBasicExist":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[239.646,501.427,250.507,512.638]},{"value":"/1","rect":[262.244,501.427,273.105,512.638]}]},"FBasicExistChild3":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[69.368,501.251,80.2293,512.463]},{"value":"/1","rect":[90.9154,501.251,101.777,512.463]}]},"FBasicExistChild1":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[154.332,501.251,165.193,512.79]},{"value":"/1","rect":[175.529,501.076,186.39,512.288]}]},"FBasicExistChild4":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[26.7986,501.076,37.6599,512.288]},{"value":"/1","rect":[48.1709,501.602,59.3595,512.813]}]},"FBasicExistSpouse":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[197.251,501.076,208.113,512.288]},{"value":"/1","rect":[218.273,500.901,229.135,512.113]}]},"FBasicExistChild2":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[112.113,500.726,122.974,511.938]},{"value":"/1","rect":[133.135,501.076,143.996,514.252]}]},"FPurchastingCoverageChild4":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[25.7475,482.157,36.6089,493.368]},{"value":"/1","rect":[47.1198,482.332,57.9812,493.543]}]},"FPurchastingCoverageSpouse":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[196.726,481.981,207.587,493.193]},{"value":"/1","rect":[218.449,481.631,229.31,492.843]}]},"FPurchastingCoverage":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[240.346,481.806,251.208,493.018]},{"value":"/1","rect":[261.543,481.631,272.078,492.843]}]},"FPurchastingCoverageChild3":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[69.7183,481.631,80.5798,492.843]},{"value":"/1","rect":[90.5651,481.806,101.426,493.018]}]},"FPurchastingCoverageChild2":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[111.937,481.456,122.536,492.667]},{"value":"/1","rect":[133.135,481.981,143.996,493.193]}]},"FPurchastingCoverageChild1":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[154.857,481.456,165.719,492.667]},{"value":"/1","rect":[177.281,481.806,188.142,493.018]}]},"FBasicSixtyPlus":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[239.47,456.229,250.332,467.441]},{"value":"/1","rect":[261.719,456.404,272.58,467.616]}]},"FBasicSixtyPlusSpouse":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[198.127,456.054,208.989,467.266]},{"value":"/1","rect":[217.397,456.229,228.259,467.441]}]},"FCancelCompareChild1":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[145.353,377.465,156.215,388.128]},{"value":"/1","rect":[164.799,376.741,175.66,387.953]}]},"FCancelCompare":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[224.36,377.004,235.222,388.215]},{"value":"/1","rect":[246.171,376.478,257.032,387.69]}]},"FCancelCompareChild4":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[27.1052,376.741,37.9665,387.952]},{"value":"/1","rect":[46.1124,377.092,56.9738,388.303]}]},"FCancelCompareChild2":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[106.462,376.653,117.324,387.865]},{"value":"/1","rect":[125.47,376.916,136.331,388.128]}]},"FCancelCompareSpouse":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[185.119,376.566,195.981,387.778]},{"value":"/1","rect":[205.441,377.004,216.302,388.215]}]},"FCancelCompareChild3":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[65.9081,376.478,76.7694,387.69]},{"value":"/1","rect":[85.7037,376.653,96.5656,387.865]}]},"FCancelPCChild2":{"type":"checkbox","page":2,"checked":"/1"},"FCancelPCSpouse":{"type":"checkbox","page":2,"checked":"/1"},"FCancelPC":{"type":"checkbox","page":2,"checked":"/1"},"FCancelPCChild4":{"type":"checkbox","page":2,"checked":"/1"},"FCancelPCChild3":{"type":"checkbox","page":2,"checked":"/1"},"FCancelPCChild1":{"type":"checkbox","page":2,"checked":"/1"},"FExistPCChild1":{"type":"checkbox","page":2,"checked":"/1"},"FExistPC":{"type":"checkbox","page":2,"checked":"/1"},"FExistPCChild3":{"type":"checkbox","page":2,"checked":"/1"},"FExistPCChild2":{"type":"checkbox","page":2,"checked":"/1"},"FExistPCSpouse":{"type":"checkbox","page":2,"checked":"/1"},"FExistPCChild4":{"type":"checkbox","page":2,"checked":"/1"},"FExistDiseasesPCSpouse":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[185.666,268.04,195.805,279.252]},{"value":"/1","rect":[204.827,268.04,215.689,279.252]}]},"FExistDiseasesPCChild3":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[66.8715,267.602,77.7328,278.814]},{"value":"/1","rect":[85.8788,267.077,96.7406,278.288]}]},"FExistDiseasesPCChild2":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[105.849,267.602,116.71,278.814]},{"value":"/1","rect":[125.744,267.252,136.244,278.463]}]},"FExistDiseasesPCChild1":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[145.703,267.602,156.565,278.813]},{"value":"/1","rect":[165.937,267.778,176.799,278.989]}]},"FExistDiseasesPCChild4":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[26.8424,267.339,37.7037,278.551]},{"value":"/1","rect":[45.9372,267.087,56.7986,277.938]}]},"FExistDiseasesPC":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[224.886,267.076,235.747,278.288]},{"value":"/1","rect":[244.944,267.252,256.166,278.463]}]},"FCancelDiseasesPCChild1":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[145.966,236.508,156.467,246.636]},{"value":"/1","rect":[165.072,236.069,175.933,247.281]}]},"FCancelDiseasesPCChild3":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[65.9081,236.42,76.7694,247.632]},{"value":"/1","rect":[86.2292,235.894,97.0908,247.106]}]},"FCancelDiseasesPCSpouse":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[185.032,236.244,195.893,247.456]},{"value":"/1","rect":[204.565,235.981,215.426,247.193]}]},"FCancelDiseasesPCChild2":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[106.463,235.894,117.324,247.106]},{"value":"/1","rect":[125.821,236.507,136.682,247.719]}]},"FCancelDiseasesPCChild4":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[26.1417,235.718,37.003,246.93]},{"value":"/1","rect":[46.7256,236.069,57.5869,247.281]}]},"FCancelDiseasesPC":{"type":"radio_group","page":2,"options":[{"value":"/2","rect":[223.923,235.368,234.784,246.58]},{"value":"/1","rect":[244.682,236.682,255.543,247.894]}]},"PolicyCancel":{"type":"radio_group","page":2,"options":[{"value":"/Agent","rect":[247.762,205.94,258.404,214.875]},{"value":"/Company","rect":[247.527,196.222,258.169,205.156]},{"value":"/Client","rect":[247.079,185.918,257.722,194.851]}]},"SignatureChild1":{"type":"unknown (/Sig)","page":2},"ClientMust1":{"type":"unknown (/Sig)","page":2},"SpouseMust1":{"type":"unknown (/Sig)","page":2},"Signature18Child1":{"type":"unknown (/Sig)","page":2},"HealthBzugBasePack":{"type":"checkbox","page":3,"checked":"/1"},"HealthMainBasePack":{"type":"checkbox","page":3,"checked":"/1"},"HealthChild4BasePack":{"type":"checkbox","page":3,"checked":"/1"},"HealthChild3BasePack":{"type":"checkbox","page":3,"checked":"/1"},"HealthChild1BasePack":{"type":"checkbox","page":3,"checked":"/1"},"HealthChild2BasePack":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1C":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugC":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4C":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2C":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3C":{"type":"checkbox","page":3,"checked":"/1"},"chkMainC":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1D":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugD":{"type":"checkbox","page":3,"checked":"/1"},"chkMainD":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3D":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2D":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4D":{"type":"checkbox","page":3,"checked":"/1"},"chkMainE":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2E":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3E":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugE":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1E":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4E":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4A":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1A":{"type":"checkbox","page":3,"checked":"/1"},"chkMainA":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugA":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2A":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3A":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4R":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1R":{"type":"checkbox","page":3,"checked":"/1"},"chkMainR":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugR":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2R":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3R":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4B":{"type":"checkbox","page":3,"checked":"/1"},"chkMainB":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugB":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3B":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1B":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2B":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3F":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4F":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2F":{"type":"checkbox","page":3,"checked":"/1"},"chkMainF":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1F":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugF":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1Q":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugQ":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2Q":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3Q":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4Q":{"type":"checkbox","page":3,"checked":"/1"},"chkMainQ":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1G":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2G":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3G":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4G":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugG":{"type":"checkbox","page":3,"checked":"/1"},"chkMainG":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1I":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4I":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2I":{"type":"checkbox","page":3,"checked":"/1"},"chkMainI":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugI":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3I":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2K":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4K":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1K":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugK":{"type":"checkbox","page":3,"checked":"/1"},"chkMainK":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3K":{"type":"checkbox","page":3,"checked":"/1"},"chkChild3M":{"type":"checkbox","page":3,"checked":"/1"},"chkChild1M":{"type":"checkbox","page":3,"checked":"/1"},"chkChild4M":{"type":"checkbox","page":3,"checked":"/1"},"chkMainM":{"type":"checkbox","page":3,"checked":"/1"},"chkChild2M":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugM":{"type":"checkbox","page":3,"checked":"/1"},"chkBzugJ":{"type":"radio_group","page":3,"options":[{"value":"/1","rect":[230.387,387.199,244.297,400.782]}]},"chkChild2J":{"type":"radio_group","page":3,"options":[{"value":"/1","rect":[133.804,387.108,147.714,400.689]}]},"chkChild3J":{"type":"radio_group","page":3,"options":[{"value":"/1","rect":[84.6375,387.093,98.5481,400.676]}]},"chkChild1J":{"type":"radio_group","page":3,"options":[{"value":"/1","rect":[182.29,386.981,196.2,400.563]}]},"chkChild4J":{"type":"radio_group","page":3,"options":[{"value":"/1","rect":[36.5213,386.964,50.4313,400.547]}]},"chkMainJ":{"type":"radio_group","page":3,"options":[{"value":"/1","rect":[278.726,386.926,292.636,400.509]}]},"chkDiseaseChildA4":{"type":"text","page":3},"chkDiseaseChildA2":{"type":"text","page":3},"chkDiseaseBzugA":{"type":"text","page":3},"chkDiseaseChildA1":{"type":"text","page":3},"chkDiseaseChildA3":{"type":"text","page":3},"chkDiseaseMainA":{"type":"text","page":3},"chkDiseaseMainB":{"type":"text","page":3},"chkDiseaseChildB3":{"type":"text","page":3},"chkDiseaseChildB1":{"type":"text","page":3},"chkDiseaseChildB4":{"type":"text","page":3},"chkDiseaseChildB2":{"type":"text","page":3},"chkDiseaseBzugB":{"type":"text","page":3},"InsurancePlan1":{"type":"text","page":3},"DiscountCode1":{"type":"text","page":3},"InsurancePlan2":{"type":"text","page":3},"DiscountCode2":{"type":"text","page":3},"InsurancePlan3":{"type":"text","page":3},"DiscountCode3":{"type":"text","page":3},"SignatureChild2":{"type":"unknown (/Sig)","page":3},"ClientMust10":{"type":"unknown (/Sig)","page":3},"SpouseMust10":{"type":"unknown (/Sig)","page":3},"Signature18Child2":{"type":"unknown (/Sig)","page":3},"MailAdvNo":{"type":"checkbox","page":5,"checked":"/True"},"SignatureChild3":{"type":"unknown (/Sig)","page":5},"ClientMust3":{"type":"unknown (/Sig)","page":5},"SpouseMust3":{"type":"unknown (/Sig)","page":5},"Signature18Child3":{"type":"unknown (/Sig)","page":5},"AgentPID":{"type":"text","page":5},"AgentMust1":{"type":"unknown (/Sig)","page":5},"FullName":{"type":"text","page":6},"FullNameChild3":{"type":"text","page":6},"FullNameChild2":{"type":"text","page":6},"FullNameChild4":{"type":"text","page":6},"FullNameSpouse":{"type":"text","page":6},"HightChild4":{"type":"text","page":6},"HightChild3":{"type":"text","page":6},"HightChild2":{"type":"text","page":6},"Hight":{"type":"text","page":6},"HightSpouse":{"type":"text","page":6},"HightChild1":{"type":"text","page":6},"WeightChild3":{"type":"text","page":6},"WeightChild4":{"type":"text","page":6},"Weight":{"type":"text","page":6},"WeightChild1":{"type":"text","page":6},"WeightSpouse":{"type":"text","page":6},"WeightChild2":{"type":"text","page":6},"IsSmoking":{"type":"radio_group","page":6,"options":[{"value":"/False","rect":[194.936,568.066,206.859,579.097]},{"value":"/True","rect":[212.062,568.012,224.061,579.043]}]},"IsSmokingChild4":{"type":"radio_group","page":6,"options":[{"value":"/True","rect":[42.4399,568.028,53.6424,579.42]},{"value":"/False","rect":[25.2557,568.585,36.8197,578.863]}]},"IsSmokingBzug":{"type":"radio_group","page":6,"options":[{"value":"/False","rect":[161.241,567.721,172.805,578.752]},{"value":"/True","rect":[178.881,567.928,190.446,578.959]}]},"IsSmokingChild1":{"type":"radio_group","page":6,"options":[{"value":"/False","rect":[126.039,567.658,137.602,579.44]},{"value":"/True","rect":[142.478,568.034,154.042,579.064]}]},"IsSmokingChild3":{"type":"radio_group","page":6,"options":[{"value":"/False","rect":[59.0427,567.373,70.6069,578.765]},{"value":"/True","rect":[75.5267,567.354,87.0905,578.746]}]},"IsSmokingChild2":{"type":"radio_group","page":6,"options":[{"value":"/False","rect":[92.9308,567.349,104.492,578.767]},{"value":"/True","rect":[110.282,567.281,121.846,578.673]}]},"ClientSmokeNum":{"type":"text","page":6},"ClientSmokeNumChild2":{"type":"text","page":6},"ClientSmokeNumSpouse":{"type":"text","page":6},"ClientSmokeNumChild3":{"type":"text","page":6},"ClientSmokeNumChild1":{"type":"text","page":6},"ClientSmokeNumChild4":{"type":"text","page":6},"Q2Q1":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q2":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q3":{"type":"checkbox","page":6,"checked":"/1"},"Q2S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[162.055,510.599,172.858,521.358]},{"value":"/1","rect":[179,510.6,189.804,521.359]}]},"Q2C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[24.7589,510.392,35.5619,521.151]},{"value":"/1","rect":[41.7171,510.317,52.5201,521.076]}]},"Q2Q4":{"type":"checkbox","page":6,"checked":"/1"},"Q2C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[60.0557,510.186,70.8587,520.945]},{"value":"/1","rect":[76.3937,510.904,87.1967,521.663]}]},"Q2C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[92.6609,509.999,103.463,520.758]},{"value":"/1","rect":[108.549,509.673,119.352,520.432]}]},"Q2C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.717,509.926,138.521,520.685]},{"value":"/1","rect":[144.68,510.442,155.483,521.201]}]},"Q2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[195.254,509.681,206.057,520.44]},{"value":"/1","rect":[211.47,509.901,222.274,520.661]}]},"Q2Q8":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q7":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q6":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q5":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q12":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q10":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q11":{"type":"checkbox","page":6,"checked":"/1"},"Q2Q9":{"type":"checkbox","page":6,"checked":"/1"},"Q3S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.164,467.403,170.967,478.162]},{"value":"/1","rect":[177.969,466.453,188.773,477.212]}]},"Q3C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[24.8091,466.574,35.6121,477.333]},{"value":"/1","rect":[43.018,466.402,53.8211,477.161]}]},"Q3C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[92.8564,466.517,103.659,477.276]},{"value":"/1","rect":[109.968,465.485,120.772,476.507]}]},"Q3C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[58.1522,465.911,68.9552,476.67]},{"value":"/1","rect":[75.51,465.857,86.313,476.616]}]},"Q3C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.055,465.584,137.858,476.343]},{"value":"/1","rect":[143.84,466.902,154.644,477.661]}]},"Q3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.307,465.515,205.11,476.65]},{"value":"/1","rect":[212.156,466.421,222.959,477.18]}]},"Q4C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[59.4143,437.307,70.2173,448.066]},{"value":"/1","rect":[75.9251,437.635,86.7282,448.394]}]},"Q4C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[92.8239,437.307,103.627,448.066]},{"value":"/1","rect":[108.7,437.307,119.503,448.066]}]},"Q4C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.51,437.307,138.313,448.066]},{"value":"/1","rect":[144.097,435.998,154.9,446.757]}]},"Q4S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[161.176,436.98,171.979,447.739]},{"value":"/1","rect":[177.564,437.307,188.367,448.066]}]},"Q4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.292,436.816,205.095,447.575]},{"value":"/1","rect":[212.987,436.816,223.79,447.575]}]},"Q4C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[24.8958,436.325,35.6988,447.084]},{"value":"/1","rect":[41.8555,437.307,52.6585,448.066]}]},"Q5":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[195.722,384.695,206.525,395.454]},{"value":"/1","rect":[213.107,384.613,223.91,395.372]}]},"Q5C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[59.207,384.478,70.01,395.236]},{"value":"/1","rect":[76.0451,384.696,86.848,395.454]}]},"Q5C4":{"type":"radio_group","page":6,"options":[{"value":"/1","rect":[42.3574,384.477,53.1605,395.236]},{"value":"/2","rect":[25.3975,383.931,36.2006,394.69]}]},"Q5C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[94.6894,384.477,105.493,395.236]},{"value":"/1","rect":[110.566,384.477,121.369,395.236]}]},"Q5S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[162.114,384.368,172.917,395.127]},{"value":"/1","rect":[178.993,385.022,189.796,395.781]}]},"Q5C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[126.648,384.204,137.451,394.963]},{"value":"/1","rect":[145.199,384.368,156.002,395.127]}]},"Q6S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.829,336.001,171.632,346.76]},{"value":"/1","rect":[179.508,336.001,190.311,346.76]}]},"Q6":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.763,335.674,205.566,346.433]},{"value":"/1","rect":[213.458,335.674,224.261,346.433]}]},"Q6C4":{"type":"radio_group","page":6,"options":[{"value":"/1","rect":[42.5005,335.405,53.3036,346.164]},{"value":"/2","rect":[26.5771,335.132,37.3801,345.891]}]},"Q6C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[59.8957,335.078,70.6988,345.836]},{"value":"/1","rect":[77.061,335.242,87.864,346]}]},"Q6C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[94.2871,334.914,105.091,345.673]},{"value":"/1","rect":[111.298,335.511,122.101,346.27]}]},"Q6C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.817,334.529,138.62,345.288]},{"value":"/1","rect":[145.222,334.692,156.025,345.451]}]},"Q7S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[161.316,288.7,172.119,299.459]},{"value":"/1","rect":[178.685,288.536,189.488,299.295]}]},"Q7C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[128.631,288.536,139.434,299.295]},{"value":"/1","rect":[145.545,289.027,156.348,299.786]}]},"Q7":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[195.086,288.373,205.889,299.132]},{"value":"/1","rect":[213.781,288.373,224.584,299.132]}]},"Q7C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[26.1917,288.267,36.9948,299.026]},{"value":"/1","rect":[43.806,287.612,54.6091,298.371]}]},"Q7C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[60.3831,288.103,70.9236,298.862]},{"value":"/1","rect":[77.2211,288.43,87.7615,299.189]}]},"Q7C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[93.629,287.94,104.433,298.699]},{"value":"/1","rect":[109.821,288.536,120.624,299.295]}]},"Q8C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[126.875,259.268,137.678,269.764]},{"value":"/1","rect":[144.117,257.958,154.92,268.454]}]},"Q8C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[94.3282,258.963,105.131,269.985]},{"value":"/1","rect":[110.029,258.087,120.832,269.109]}]},"Q8C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[57.646,258.899,68.449,269.658]},{"value":"/1","rect":[75.1386,259.226,85.9416,269.985]}]},"Q8S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[161.523,258.841,172.326,269.6]},{"value":"/1","rect":[177.42,259.005,188.223,269.764]}]},"Q8C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[23.7819,258.602,34.5849,270.149]},{"value":"/1","rect":[41.8871,257.62,52.6902,269.167]}]},"Q8":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.312,258.186,205.115,268.945]},{"value":"/1","rect":[213.007,258.186,223.81,268.945]}]},"Q9C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[93.4525,232.067,104.256,242.827]},{"value":"/1","rect":[110.573,231.625,121.376,242.384]}]},"Q9C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[59.9164,232.056,70.7194,242.815]},{"value":"/1","rect":[76.5307,231.55,87.3337,242.31]}]},"Q9C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[126.678,232.015,137.481,242.774]},{"value":"/1","rect":[144.877,231.87,155.68,242.629]}]},"Q9":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[195.379,231.894,206.182,242.653]},{"value":"/1","rect":[212.935,231.582,223.738,242.342]}]},"Q9S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.702,231.426,171.505,242.185]},{"value":"/1","rect":[178.979,231.963,189.782,242.722]}]},"Q9C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[26.1406,231.22,36.9437,241.98]},{"value":"/1","rect":[42.8386,231.192,53.6417,241.952]}]},"Q10S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.893,206.062,171.696,216.821]},{"value":"/1","rect":[178.35,205.871,189.153,216.63]}]},"Q10C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[92.8459,205.722,103.65,216.481]},{"value":"/1","rect":[108.976,206.028,119.779,216.787]}]},"Q10":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.553,205.676,205.356,216.435]},{"value":"/1","rect":[212.999,205.37,223.802,216.129]}]},"Q10C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[126.344,205.675,137.147,216.434]},{"value":"/1","rect":[144.958,205.508,155.761,216.267]}]},"Q10C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[59.8711,205.533,70.6742,216.292]},{"value":"/1","rect":[75.831,205.549,86.634,216.308]}]},"Q10C4":{"type":"radio_group","page":6,"options":[{"value":"/1","rect":[42.5754,205.519,53.3784,216.278]},{"value":"/2","rect":[25.7681,204.854,36.5712,215.613]}]},"Q11C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[92.5294,168.67,103.333,179.429]},{"value":"/1","rect":[109.844,168.544,120.647,179.303]}]},"Q11":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[196.369,168.443,207.172,179.202]},{"value":"/1","rect":[213.542,167.969,224.346,178.728]}]},"Q11S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[161.461,168.37,172.265,179.129]},{"value":"/1","rect":[178.557,168.363,189.361,179.122]}]},"Q11C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.745,168.213,138.548,178.972]},{"value":"/1","rect":[144.04,168.023,154.845,178.782]}]},"Q11C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[60.0254,167.635,70.8285,178.394]},{"value":"/1","rect":[75.5489,167.76,86.352,178.519]}]},"Q11C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[25.156,167.411,35.959,178.17]},{"value":"/1","rect":[42.1269,167.892,52.9299,178.651]}]},"Q12S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.051,140.141,170.854,150.9]},{"value":"/1","rect":[177.909,139.426,188.712,150.185]}]},"Q12C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.731,140.086,138.534,150.845]},{"value":"/1","rect":[143.299,139.387,154.102,150.146]}]},"Q12C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[25.6348,140.014,36.438,150.774]},{"value":"/1","rect":[42.2785,139.6,53.0815,150.359]}]},"Q12C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[59.1952,140.014,69.9983,150.773]},{"value":"/1","rect":[75.6188,139.816,86.4217,150.576]}]},"Q12":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.804,139.366,205.607,150.125]},{"value":"/1","rect":[213.384,139.382,224.187,150.141]}]},"Q12C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[94.1742,139.346,104.978,150.106]},{"value":"/1","rect":[110.084,139.853,120.887,150.612]}]},"Q13C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[25.0299,115.93,35.833,126.69]},{"value":"/1","rect":[42.0008,116.607,52.8039,127.366]}]},"Q13C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[93.3068,115.899,104.11,126.659]},{"value":"/1","rect":[110.785,116.244,121.588,127.003]}]},"Q13":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.935,115.898,205.738,126.658]},{"value":"/1","rect":[214.17,115.962,224.973,126.722]}]},"Q13C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[59.7357,115.548,70.5389,126.308]},{"value":"/1","rect":[76.2411,115.214,87.0441,125.974]}]},"Q13S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[161.606,115.363,172.409,126.123]},{"value":"/1","rect":[177.993,116.006,188.796,126.766]}]},"Q13C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.355,114.538,138.158,125.298]},{"value":"/1","rect":[145.309,116.214,156.112,126.973]}]},"Q14C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[23.753,91.2552,34.5561,102.015]},{"value":"/1","rect":[40.3966,90.9927,51.1997,101.752]}]},"Q14C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[58.6225,91.1764,69.4256,101.936]},{"value":"/1","rect":[75.6189,90.7293,86.4218,101.489]}]},"Q14S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.387,91.064,171.191,101.823]},{"value":"/1","rect":[177.439,90.2777,188.242,101.037]}]},"Q14":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[194.476,90.4303,205.279,101.19]},{"value":"/1","rect":[212.238,90.9859,223.041,101.745]}]},"Q14C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[92.1798,90.4043,102.983,101.164]},{"value":"/1","rect":[109.668,90.169,120.471,100.928]}]},"Q14C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[126.706,90.0651,137.509,100.824]},{"value":"/1","rect":[144.03,90.0333,154.833,100.793]}]},"Q15C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[92.5171,67.7814,103.32,78.5408]},{"value":"/1","rect":[108.195,67.4166,118.998,78.1758]}]},"Q15":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[193.6,67.6535,204.403,78.4126]},{"value":"/1","rect":[211.69,68.1606,222.493,78.9198]}]},"Q15C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[126.438,67.5775,137.241,78.3365]},{"value":"/1","rect":[142.807,66.9069,153.61,77.6659]}]},"Q15C4":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[24.8409,67.3904,35.644,78.1496]},{"value":"/1","rect":[40.1753,66.9816,50.9784,77.7408]}]},"Q15C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[57.5829,66.715,68.3861,77.474]},{"value":"/1","rect":[74.7428,65.9442,85.5459,76.7032]}]},"Q15S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.166,66.672,170.969,77.431]},{"value":"/1","rect":[176.563,67.3141,187.366,78.0731]}]},"Q16S":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[160.914,48.1159,171.717,58.8749]},{"value":"/1","rect":[179.439,48.3269,190.242,59.0859]}]},"Q16C3":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[60.131,47.6259,70.9341,58.3849]},{"value":"/1","rect":[76.6362,48.6989,87.4394,59.4579]}]},"Q16":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[195.003,47.3719,205.806,58.1309]},{"value":"/1","rect":[213.42,47.1089,224.223,57.8679]}]},"Q16C2":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[93.6999,47.0999,104.503,57.8589]},{"value":"/1","rect":[109.928,48.0449,120.731,58.8039]}]},"Q16C1":{"type":"radio_group","page":6,"options":[{"value":"/2","rect":[127.093,46.9739,137.896,57.7329]},{"value":"/1","rect":[145.573,47.2449,156.376,58.0039]}]},"Q16C4":{"type":"radio_group","page":6,"options":[{"value":"/1","rect":[42.2323,46.9349,53.0354,57.6939]},{"value":"/2","rect":[25.7524,46.3849,36.5555,57.1439]}]},"Q17C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[24.9535,714.582,35.7565,725.34]},{"value":"/1","rect":[42.2816,713.928,53.0847,724.686]}]},"Q17S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.185,714.17,171.988,724.928]},{"value":"/1","rect":[178.389,713.733,189.192,724.491]}]},"Q17C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[126.822,713.819,137.625,724.577]},{"value":"/1","rect":[144.252,713.6,155.055,724.358]}]},"Q17C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[58.4404,713.818,69.2434,724.577]},{"value":"/1","rect":[75.4685,713.926,86.2715,724.686]}]},"Q17C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[92.0845,713.71,102.887,724.469]},{"value":"/1","rect":[110.411,713.926,121.215,724.686]}]},"Q17":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[195.397,713.624,206.2,724.383]},{"value":"/1","rect":[213.876,713.624,224.679,724.383]}]},"Q18":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[195.284,693.961,206.087,704.72]},{"value":"/1","rect":[212.454,693.634,223.257,704.392]}]},"Q18C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[93.2203,693.938,104.022,704.696]},{"value":"/1","rect":[111.218,693.282,122.021,704.042]}]},"Q18C4":{"type":"radio_group","page":7,"options":[{"value":"/1","rect":[42.7144,693.774,53.5175,704.532]},{"value":"/2","rect":[26.1055,693.12,36.9086,703.878]}]},"Q18C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[60.234,693.282,71.0371,704.042]},{"value":"/1","rect":[76.7536,693.775,87.5567,704.532]}]},"Q18C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[128.05,693.282,138.854,704.042]},{"value":"/1","rect":[144.023,693.118,154.827,703.878]}]},"Q18S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.46,692.978,172.264,703.738]},{"value":"/1","rect":[177.793,693.797,188.596,704.556]}]},"Q19C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[25.7454,671.023,36.5484,681.78]},{"value":"/1","rect":[44.1664,670.957,54.9695,681.716]}]},"Q19C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[94.9075,670.76,105.709,681.517]},{"value":"/1","rect":[112.084,670.726,122.887,681.486]}]},"Q19S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.74,670.679,172.543,681.437]},{"value":"/1","rect":[178.48,670.489,189.284,681.247]}]},"Q19C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[61.01,670.521,71.8131,681.279]},{"value":"/1","rect":[78.192,670.234,88.9951,680.992]}]},"Q19C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[128.686,670.5,139.489,681.434]},{"value":"/1","rect":[147.053,671.811,157.856,680.934]}]},"Q19":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[196.6,670.224,207.404,680.984]},{"value":"/1","rect":[213.444,671.074,224.247,681.832]}]},"Q20C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[95.4627,649.288,106.639,658.944]},{"value":"/1","rect":[111.993,648.581,123.171,660.116]}]},"Q20C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[61.2382,648.717,72.0402,660.254]},{"value":"/1","rect":[77.7953,649.118,88.9737,659.902]}]},"Q20C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[129.154,648.483,139.956,659.267]},{"value":"/1","rect":[145.59,648.048,156.392,658.832]}]},"Q20S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.809,648.165,172.988,660.434]},{"value":"/1","rect":[180.173,648.095,190.6,659.986]}]},"Q20C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[25.2141,647.993,36.0162,659.154]},{"value":"/1","rect":[43.9796,647.769,54.4053,659.681]}]},"Q20":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[196.46,647.662,207.262,659.196]},{"value":"/1","rect":[213.303,648.282,224.105,659.443]}]},"Q21C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[27.3347,624.273,38.2681,636.136]},{"value":"/1","rect":[43.7203,623.454,54.5223,635.318]}]},"Q21C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[60.98,624.132,71.9135,635.996]},{"value":"/1","rect":[77.6941,622.561,88.4961,635.177]}]},"Q21C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[93.0334,623.968,103.965,635.832]},{"value":"/1","rect":[110.22,624.02,121.022,635.131]}]},"Q21S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.835,623.646,172.638,634.78]},{"value":"/1","rect":[179.282,623.106,190.086,634.617]}]},"Q21C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[127.801,623.417,139.111,635.657]},{"value":"/1","rect":[145.607,622.917,156.785,634.78]}]},"Q21":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[195.722,623.196,206.524,635.435]},{"value":"/1","rect":[214.201,623.456,225.003,635.435]}]},"Q22":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[196.075,605.564,207.203,617.157]},{"value":"/1","rect":[213.899,603.831,224.274,616.176]}]},"Q22C4":{"type":"radio_group","page":7,"options":[{"value":"/1","rect":[44.7258,605.498,55.8539,616.714]},{"value":"/2","rect":[25.6347,604.745,36.763,616.714]}]},"Q22C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[59.8174,604.816,70.9456,616.408]},{"value":"/1","rect":[76.9808,604.768,88.1089,616.736]}]},"Q22C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[94.3098,604.767,106.191,616.736]},{"value":"/1","rect":[111.4,605.046,122.528,617.017]}]},"Q22S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.809,604.444,172.718,615.686]},{"value":"/1","rect":[179.46,604.34,190.587,616.176]}]},"Q22C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[128.59,604.044,139.718,616.012]},{"value":"/1","rect":[144.499,604.044,155.628,616.012]}]},"Q23C4":{"type":"radio_group","page":7,"options":[{"value":"/1","rect":[43.7262,586.469,54.8544,598.814]},{"value":"/2","rect":[25.2819,585.814,36.4101,598.159]}]},"Q23C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[128.175,585.931,139.303,598.276]},{"value":"/1","rect":[145.965,585.113,157.093,597.457]}]},"Q23C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[93.865,585.814,104.991,598.159]},{"value":"/1","rect":[112.465,585.978,123.593,598.323]}]},"Q23":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[195.559,585.231,206.687,597.576]},{"value":"/1","rect":[214.038,585.231,225.166,597.576]}]},"Q23C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[59.3538,584.996,70.4819,597.341]},{"value":"/1","rect":[74.9338,585.978,89.1711,598.323]}]},"Q23S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.746,584.95,172.874,597.295]},{"value":"/1","rect":[178.193,586.05,189.321,598.395]}]},"Q24C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[128.275,546.851,139.403,559.196]},{"value":"/1","rect":[145.109,546.098,156.237,558.443]}]},"Q24S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[162.918,546.706,174.046,559.051]},{"value":"/1","rect":[179.339,546.47,190.467,558.815]}]},"Q24C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[61.3278,546.68,72.4557,559.025]},{"value":"/1","rect":[77.509,546.405,88.6371,558.75]}]},"Q24C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[94.2975,546.248,105.424,558.593]},{"value":"/1","rect":[111.819,546.422,122.947,558.767]}]},"Q24":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[196.012,546.188,207.14,558.533]},{"value":"/1","rect":[214.491,546.547,225.619,558.892]}]},"Q24C4":{"type":"radio_group","page":7,"options":[{"value":"/1","rect":[43.911,545.597,56.0863,559.256]},{"value":"/2","rect":[26.1821,546.479,37.3103,558.824]}]},"Q25C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[126.654,490.769,137.782,503.113]},{"value":"/1","rect":[143.488,490.016,154.616,502.36]}]},"Q25S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.297,490.623,172.425,502.969]},{"value":"/1","rect":[177.718,490.388,188.846,502.733]}]},"Q25C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[59.7069,490.597,70.8348,502.943]},{"value":"/1","rect":[75.8881,490.323,87.0162,502.668]}]},"Q25C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[24.5612,490.397,35.6894,502.742]},{"value":"/1","rect":[42.29,489.514,53.4181,503.173]}]},"Q25C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[92.6764,490.165,103.803,502.511]},{"value":"/1","rect":[110.198,490.339,121.326,502.685]}]},"Q25":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[196.23,490.105,207.358,502.451]},{"value":"/1","rect":[212.87,490.464,223.998,502.81]}]},"Q26C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[126.92,466.044,138.048,478.389]},{"value":"/1","rect":[143.754,465.29,154.882,477.636]}]},"Q26S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.563,465.899,172.691,478.243]},{"value":"/1","rect":[177.984,465.662,189.112,478.008]}]},"Q26C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[59.9726,465.873,71.1005,478.217]},{"value":"/1","rect":[76.1538,465.597,87.2819,477.943]}]},"Q26C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[24.8269,465.672,35.9551,478.017]},{"value":"/1","rect":[42.5558,464.79,53.6838,478.449]}]},"Q26C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[92.9422,465.441,104.069,477.785]},{"value":"/1","rect":[110.464,465.615,121.592,477.959]}]},"Q26":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[194.657,465.381,205.785,477.725]},{"value":"/1","rect":[213.136,465.74,224.264,478.084]}]},"Q27C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[126.556,445.953,137.684,458.298]},{"value":"/1","rect":[143.39,445.199,154.518,457.545]}]},"Q27S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.199,445.808,172.327,458.152]},{"value":"/1","rect":[177.62,445.571,188.748,457.917]}]},"Q27C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[59.609,445.782,70.7369,458.126]},{"value":"/1","rect":[75.7902,445.506,86.9183,457.852]}]},"Q27C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[24.4633,445.581,35.5915,457.925]},{"value":"/1","rect":[42.1922,444.699,53.3202,458.358]}]},"Q27C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[92.5786,445.35,103.705,457.695]},{"value":"/1","rect":[110.1,445.524,121.228,457.868]}]},"Q27":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[194.293,445.29,205.421,457.634]},{"value":"/1","rect":[212.772,445.649,223.9,457.993]}]},"Q28C1":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[126.792,425.099,137.92,437.444]},{"value":"/1","rect":[143.626,424.346,154.754,436.691]}]},"Q28S":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[161.435,424.954,172.563,437.298]},{"value":"/1","rect":[177.856,424.717,188.984,437.063]}]},"Q28C3":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[59.8453,424.928,70.9732,437.272]},{"value":"/1","rect":[76.0265,424.652,87.1547,436.998]}]},"Q28C4":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[24.6996,424.727,35.8278,437.071]},{"value":"/1","rect":[42.4285,423.845,53.5566,437.504]}]},"Q28C2":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[92.8148,424.496,103.941,436.841]},{"value":"/1","rect":[110.336,424.67,121.464,437.014]}]},"Q28":{"type":"radio_group","page":7,"options":[{"value":"/2","rect":[194.529,424.436,205.657,436.781]},{"value":"/1","rect":[213.008,424.795,224.136,437.139]}]},"DiagnosedName1":{"type":"text","page":7},"DiagnosisNum1":{"type":"text","page":7},"DiagnosisDetails1":{"type":"text","page":7},"DiagnosisNum2":{"type":"text","page":7},"DiagnosisDetails2":{"type":"text","page":7},"DiagnosedName2":{"type":"text","page":7},"DiagnosisNum3":{"type":"text","page":7},"DiagnosisDetails3":{"type":"text","page":7},"DiagnosedName3":{"type":"text","page":7},"DiagnosisDetails4":{"type":"text","page":7},"DiagnosisNum4":{"type":"text","page":7},"DiagnosedName4":{"type":"text","page":7},"DiagnosisDetails5":{"type":"text","page":7},"DiagnosisNum5":{"type":"text","page":7},"DiagnosedName5":{"type":"text","page":7},"DiagnosisDetails6":{"type":"text","page":7},"DiagnosedName6":{"type":"text","page":7},"DiagnosisNum6":{"type":"text","page":7},"SpouseMust2":{"type":"unknown (/Sig)","page":7},"ClientMust2":{"type":"unknown (/Sig)","page":7},"SignatureChild4":{"type":"unknown (/Sig)","page":7},"Signature18Child4":{"type":"unknown (/Sig)","page":7},"CollectiveNumber":{"type":"text","page":8},"AccountNumber":{"type":"text","page":8},"PayerLastName":{"type":"text","page":8},"PayerPID":{"type":"text","page":8},"PayerFirstName":{"type":"text","page":8},"PayerRelation":{"type":"text","page":8},"PayerBusinessName":{"type":"text","page":8},"PayerIDType":{"type":"radio_group","page":8,"options":[{"value":"/AM","rect":[99.5848,702.912,110.097,711.453]},{"value":"/HetPay","rect":[129.411,703.438,139.396,711.871]},{"value":"/PID","rect":[159.63,703.307,169.089,711.584]}]},"PayerHouseNumber":{"type":"text","page":8},"PayerStreetName":{"type":"text","page":8},"PayerCity":{"type":"text","page":8},"PayerZipCode":{"type":"text","page":8},"PayerSignature":{"type":"unknown (/Sig)","page":8},"FullNamePayer":{"type":"text","page":8},"CreditCardType":{"type":"radio_group","page":8,"options":[{"value":"/AmericanExp","rect":[321.638,560.88,332.148,571.128]},{"value":"/Other","rect":[233.872,560.573,244.383,570.822]},{"value":"/Diners","rect":[367.359,561.142,377.871,571.391]},{"value":"/Leumi","rect":[437.565,559.785,448.076,570.034]},{"value":"/Isracart","rect":[501.244,559.828,511.755,570.077]},{"value":"/Visa","rect":[558.66,559.698,569.171,569.946]}]},"MonthDigit":{"type":"text","page":8},"YearDigit":{"type":"text","page":8},"CreditCardNumber":{"type":"text","page":8},"CreditPayerSignature":{"type":"unknown (/Sig)","page":8},"PIDCreditCardHolder":{"type":"text","page":8},"FirstNameCreditCardHolder":{"type":"text","page":8},"LastNameCreditCardHolder":{"type":"text","page":8},"DebitDate":{"type":"radio_group","page":8,"options":[{"value":"/10","rect":[261.043,470.341,272.605,481.115]},{"value":"/1","rect":[315.63,470.034,327.193,480.808]}]},"BankName":{"type":"text","page":8},"BankAccountNumber":{"type":"text","page":8},"BankBranchCode":{"type":"text","page":8},"AccountType":{"type":"text","page":8},"BankNameCode":{"type":"text","page":8},"BankBranch":{"type":"text","page":8},"AmitNumber":{"type":"text","page":8},"MosadName":{"type":"text","page":8},"GeneralAuth":{"type":"checkbox","page":8,"checked":"/True"},"MaximumAmountText":{"type":"text","page":8},"MaximumAmount":{"type":"checkbox","page":8,"checked":"/True"},"ExpirationDate":{"type":"checkbox","page":8,"checked":"/True"},"DayExpiryDate":{"type":"text","page":8},"BankAccOwner":{"type":"text","page":8},"HetPayBankAccOwner":{"type":"text","page":8},"PIDBankAccOwner":{"type":"text","page":8},"AccOwnerSignature":{"type":"unknown (/Sig)","page":8}};
+
+let geminiKey = localStorage.getItem('gemini_key') || '';
+let uploadedFile = null;
+let extractedData = null;
+let phoenixPdfBytes = null;
+
+// Load phoenix PDF from same repo on startup
+async function loadPhoenixPdf() {
+  try {
+    const resp = await fetch('./phoenix.pdf');
+    if (!resp.ok) throw new Error('PDF not found');
+    const buf = await resp.arrayBuffer();
+    phoenixPdfBytes = new Uint8Array(buf);
+    console.log('Phoenix PDF loaded:', phoenixPdfBytes.length, 'bytes');
+  } catch(e) {
+    console.error('Failed to load phoenix.pdf:', e);
+  }
+}
+loadPhoenixPdf();
+
+if(geminiKey){
+  document.getElementById('cardKey').style.display='none';
+  document.getElementById('cardUpload').style.display='block';
+  setStep(2);
+}
+
+function setStep(n){
+  for(let i=1;i<=4;i++){
+    const el=document.getElementById('s'+i);
+    el.className='step-item'+(i<n?' done':i===n?' active':'');
+  }
+}
+
+function saveKey(){
+  const k=document.getElementById('geminiKey').value.trim();
+  if(!k){alert('נא להכניס API Key');return;}
+  geminiKey=k;
+  localStorage.setItem('gemini_key',k);
+  document.getElementById('cardKey').style.display='none';
+  document.getElementById('cardUpload').style.display='block';
+  setStep(2);
+}
+
+const dz=document.getElementById('dz'),fi=document.getElementById('fi');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0])});
+fi.addEventListener('change',()=>{if(fi.files[0])setFile(fi.files[0])});
+
+function setFile(f){
+  uploadedFile=f;
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fileChip').style.display='block';
+  document.getElementById('readBtn').disabled=false;
+}
+function clearFile(){
+  uploadedFile=null;fi.value='';
+  document.getElementById('fileChip').style.display='none';
+  document.getElementById('readBtn').disabled=true;
+}
+
+function setSt(id,type,msg){
+  const el=document.getElementById(id);
+  el.className='status-msg '+type;
+  el.innerHTML=type==='loading'?`<div class="spin"></div><span>${msg}</span>`:`<span>${type==='ok'?'✓':'✕'}</span><span>${msg}</span>`;
+}
+function setP(pw,pf,pct,lbl){
+  document.getElementById(pw).style.display='block';
+  document.getElementById(pf).style.width=pct+'%';
+  if(lbl!==undefined){
+    const l=document.getElementById('progLbl');
+    const p=document.getElementById('progPct');
+    if(l)l.textContent=lbl;
+    if(p)p.textContent=pct+'%';
+  }
+}
+
+async function fileToB64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function extractData(){
+  if(!uploadedFile)return;
+  document.getElementById('readBtn').disabled=true;
+  setStep(2);
+  setP('pw1','pf1',20,'שולח לניתוח...');
+  setSt('st1','loading','Gemini קורא את הדוח...');
+
+  try{
+    const b64=await fileToB64(uploadedFile);
+    const mime=uploadedFile.type||'application/pdf';
+
+    const prompt=`אתה מנוע חילוץ נתונים מדוח תפעולי של GEMEL INVEST לטופס ביטוח בריאות פניקס.
+קרא את כל הנתונים מהדוח בזהירות. החזר JSON בלבד ללא backticks ללא הסברים.
+
+{
+  "agent_name": null,
+  "start_date": null,
+  "applicant": {
+    "full_name": null,
+    "first_name": null,
+    "last_name": null,
+    "pid": null,
+    "birth_date": null,
+    "gender": null,
+    "hmo": null,
+    "shaban": null,
+    "occupation": null,
+    "phone": null,
+    "email": null,
+    "city": null,
+    "street": null,
+    "house_number": null,
+    "height": null,
+    "weight": null,
+    "smoking": null,
+    "family_status": null
+  },
+  "spouse": {
+    "first_name": null,
+    "last_name": null,
+    "pid": null,
+    "birth_date": null,
+    "gender": null,
+    "hmo": null,
+    "height": null,
+    "weight": null
+  },
+  "children": [],
+  "payment": {
+    "bank_name": null,
+    "branch_code": null,
+    "account_number": null,
+    "debit_day": null
+  }
+}
+
+כללים חשובים:
+- תאריכים תמיד בפורמט DD/MM/YYYY
+- gender: "זכר" או "נקבה" בלבד
+- smoking: "כן" או "לא" בלבד
+- children: מערך ריק [] אם אין ילדים, אחרת מערך של אובייקטים
+- house_number: רק המספר, ללא שם הרחוב
+- shaban: שם קופת החולים כולל מסלול אם קיים (למשל "כללית פלטינום")
+- start_date: תאריך תחילת הכיסוי בפורמט DD/MM/YYYY`;
+
+    setP('pw1','pf1',45,'Gemini מנתח...');
+
+    const resp=await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          contents:[{parts:[
+            {inline_data:{mime_type:mime,data:b64}},
+            {text:prompt}
+          ]}],
+          generationConfig:{temperature:0,maxOutputTokens:2000}
+        })
+      }
+    );
+
+    setP('pw1','pf1',80,'מעבד תוצאות...');
+
+    if(!resp.ok){
+      const err=await resp.json();
+      throw new Error(err.error?.message||'Gemini API error '+resp.status);
+    }
+
+    const apiData=await resp.json();
+    const raw=apiData.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    if(!raw) throw new Error('לא התקבלה תשובה מ-Gemini');
+    const clean=raw.replace(/```json|```/g,'').trim();
+    extractedData=JSON.parse(clean);
+
+    setP('pw1','pf1',100,'');
+    setSt('st1','ok','נתונים חולצו בהצלחה!');
+    setStep(3);
+    renderPreview(extractedData);
+    document.getElementById('cardPreview').style.display='block';
+    document.getElementById('cardPreview').scrollIntoView({behavior:'smooth'});
+
+  }catch(e){
+    setSt('st1','err','שגיאה: '+e.message);
+    document.getElementById('readBtn').disabled=false;
+  }
+}
+
+function renderPreview(d){
+  const ap=d.applicant||{},ch=d.children||[],pay=d.payment||{};
+  const row=(label,val)=>{
+    const v=val&&String(val).trim();
+    return `<div class="field-cell ${v?'filled':''}"><div class="fl">${label}</div><div class="fv ${v?'':'empty'}">${v||'לא זוהה'}</div></div>`;
+  };
+  let html='<div class="section-title">מועמד ראשי</div><div class="fields-grid">';
+  html+=row('שם פרטי',ap.first_name);
+  html+=row('שם משפחה',ap.last_name);
+  html+=row('ת.ז.',ap.pid);
+  html+=row('תאריך לידה',ap.birth_date);
+  html+=row('מגדר',ap.gender);
+  html+=row('קופת חולים',ap.hmo);
+  html+=row('שב"ן',ap.shaban);
+  html+=row('עיסוק',ap.occupation);
+  html+=row('טלפון',ap.phone);
+  html+=row('אימייל',ap.email);
+  html+=row('עיר',ap.city);
+  html+=row('רחוב',ap.street);
+  html+=row('מספר בית',ap.house_number);
+  html+=row('גובה',ap.height?ap.height+' ס"מ':null);
+  html+=row('משקל',ap.weight?ap.weight+' ק"ג':null);
+  html+=row('עישון',ap.smoking);
+  html+=row('מצב משפחתי',ap.family_status);
+  html+='</div>';
+  if(ch.length){
+    html+=`<div class="section-title">ילדים (${ch.length})</div><div class="fields-grid">`;
+    ch.forEach((c,i)=>{
+      html+=row(`ילד ${i+1} — שם`,[c.first_name,c.last_name].filter(Boolean).join(' '));
+      html+=row(`ילד ${i+1} — ת.ז.`,c.pid);
+      html+=row(`ילד ${i+1} — לידה`,c.birth_date);
+      html+=row(`ילד ${i+1} — מגדר`,c.gender);
+    });
+    html+='</div>';
+  }
+  if(pay.account_number||pay.bank_name){
+    html+='<div class="section-title">תשלום</div><div class="fields-grid">';
+    html+=row('בנק',pay.bank_name);
+    html+=row('סניף',pay.branch_code);
+    html+=row('חשבון',pay.account_number);
+    html+=row('יום חיוב',pay.debit_day);
+    html+='</div>';
+  }
+  document.getElementById('previewContent').innerHTML=html;
+}
+
+const GM={'זכר':'True','נקבה':'False'};
+const FM={'נשוי':'Married','נשואה':'Married','רווק':'Single','רווקה':'Single','גרוש':'Divorced','גרושה':'Divorced'};
+const SM={'כן':'True','לא':'False'};
+const SH={'כללית פלטינום':'2','מכבי שלי':'2','מאוחדת שיא':'2','לאומית שלי':'2','כללית':'1','מכבי':'1','מאוחדת':'1','לאומית':'1'};
+
+async function fillForm(){
+  document.getElementById('fillBtn').disabled=true;
+  setStep(4);
+  setP('pw2','pf2',10,'');
+  setSt('st2','loading','ממלא את הטופס...');
+  try{
+    if(!phoenixPdfBytes){
+      // Try loading again
+      const resp=await fetch('./phoenix.pdf');
+      if(!resp.ok) throw new Error('לא ניתן לטעון את טופס פניקס (phoenix.pdf). ודא שהקובץ קיים בריפו.');
+      const buf=await resp.arrayBuffer();
+      phoenixPdfBytes=new Uint8Array(buf);
+    }
+
+    const d=extractedData,ap=d.applicant||{},ch=d.children||[],pay=d.payment||{};
+    const CSFX=['Child1','Child2','Child3','Child4'];
+
+    const pdfDoc=await PDFLib.PDFDocument.load(phoenixPdfBytes,{ignoreEncryption:true});
+    const form=pdfDoc.getForm();
+    setP('pw2','pf2',40,'');
+
+    const t=(id,val)=>{if(!val)return;try{form.getTextField(id).setText(String(val));}catch(e){}};
+    const r=(id,val)=>{if(!val)return;try{form.getRadioGroup(id).select(val);}catch(e){}};
+    const c=(id)=>{try{form.getCheckBox(id).check();}catch(e){}};
+
+    t('SupervisorName',d.agent_name);
+    t('InsuranceBegin',d.start_date);
+    t('BirthDate',ap.birth_date);
+    t('HMO',ap.hmo?ap.hmo.split(' ')[0]:null);
+    t('OccupationCode',ap.occupation);
+    t('CellPhoneNumber',ap.phone);
+    t('EmailAddress',ap.email);
+    t('City',ap.city);
+    t('StreetName',ap.street);
+    t('HouseNumber',ap.house_number);
+    if(GM[ap.gender])r('Gender',GM[ap.gender]);
+    if(FM[ap.family_status])r('FamilyStatus',FM[ap.family_status]);
+    if(SH[ap.shaban])r('ShabanR',SH[ap.shaban]);
+    if(ap.email)c('Email');else c('IsraelMail');
+    const fullName=ap.full_name||[ap.first_name,ap.last_name].filter(Boolean).join(' ');
+    t('FullName',fullName);
+    t('Hight',ap.height);
+    t('Weight',ap.weight);
+    if(SM[ap.smoking])r('IsSmoking',SM[ap.smoking]);
+
+    ch.slice(0,4).forEach((child,i)=>{
+      const s=CSFX[i];
+      t('FirstName'+s,child.first_name);
+      t('LastName'+s,child.last_name);
+      t('PID'+s,child.pid);
+      t('BirthDate'+s,child.birth_date);
+      t('HMO'+s,child.hmo);
+      if(GM[child.gender])r('Gender'+s,GM[child.gender]);
+      t('Hight'+s,child.height);
+      t('Weight'+s,child.weight);
+      r('IsSmoking'+s,'False');
+    });
+
+    t('BankBranch',pay.bank_name);
+    t('BankBranchCode',pay.branch_code);
+    t('BankAccountNumber',pay.account_number);
+    if(pay.debit_day)r('DebitDate',pay.debit_day==='1'?'1':'10');
+
+    setP('pw2','pf2',85,'');
+    form.flatten();
+    const filled=await pdfDoc.save();
+    const blob=new Blob([filled],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const lastName=ap.last_name||'טופס';
+    const pid=ap.pid||'';
+    document.getElementById('dlLink').href=url;
+    document.getElementById('dlLink').download=`פניקס_${lastName}_${pid}.pdf`;
+    document.getElementById('resultSub').textContent=`${fullName} | ת.ז. ${pid} | ${ch.length} ילדים`;
+    setP('pw2','pf2',100,'');
+    setSt('st2','ok','הטופס הופק בהצלחה!');
+    document.getElementById('cardResult').style.display='block';
+    document.getElementById('cardResult').scrollIntoView({behavior:'smooth'});
+
+  }catch(e){
+    setSt('st2','err','שגיאה: '+e.message);
+    document.getElementById('fillBtn').disabled=false;
+  }
+}
+
+function resetUpload(){
+  clearFile();extractedData=null;
+  ['cardPreview','cardResult'].forEach(id=>document.getElementById(id).style.display='none');
+  ['st1','st2'].forEach(id=>{document.getElementById(id).className='status-msg'});
+  ['pw1','pw2'].forEach(id=>{document.getElementById(id).style.display='none'});
+  document.getElementById('fillBtn').disabled=false;
+  document.getElementById('readBtn').disabled=true;
+  setStep(2);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
